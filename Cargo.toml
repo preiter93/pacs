@@ -1,0 +1,11 @@
+[package]
+name = "pacs"
+version = "0.0.0"
+edition = "2024"
+repository = "https://github.com/preiter93/pacs"
+keywords = ["cli", "tui", "command", "store", "dev"]
+description = "PACS - Project Aware Command Storage"
+authors = ["preiter <phil.reiter93@gmail.com>"]
+license = "MIT"
+
+[dependencies]
