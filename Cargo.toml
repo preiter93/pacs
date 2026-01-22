@@ -9,6 +9,7 @@ edition = "2024"
 authors = ["preiter <phil.reiter93@gmail.com>"]
 license = "MIT"
 description = "Project Aware Command Storage - A CLI for managing and running saved shell commands"
+readme = "README.md"
 
 [workspace.dependencies]
 pacs-cli = { path = "pacs-cli", version = "0.1.0-beta.1" }

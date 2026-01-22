@@ -6,6 +6,7 @@ repository.workspace = true
 authors.workspace = true
 license.workspace = true
 description.workspace = true
+readme.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
