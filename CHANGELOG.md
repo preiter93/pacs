@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.0.0] - 2026-01-20
+## [0.1.0-beta.1] - 2026-01-22
+
+### 🚀 Features
+
+- Hello world pacs
 
 
