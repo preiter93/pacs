@@ -1,0 +1,16 @@
+[package]
+name = "pacs-cli"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+authors.workspace = true
+license.workspace = true
+description.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+arboard = "3.6"
+clap = { workspace = true }
+clap_complete = { workspace = true }
+pacs-core = { workspace = true }
+serde = { workspace = true }

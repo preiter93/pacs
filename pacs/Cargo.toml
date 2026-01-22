@@ -1,0 +1,18 @@
+[package]
+name = "pacs"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+authors.workspace = true
+license.workspace = true
+description.workspace = true
+
+[[bin]]
+name = "pacs"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+clap_complete = { workspace = true }
+pacs-cli = { workspace = true }

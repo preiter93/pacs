@@ -44,9 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        features: 
+        features:
           - ""
-          - "--no-default-features"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
