@@ -441,10 +441,12 @@ impl Pacs {
 
     /// Returns all commands in the specified scope.
     pub fn list_commands(&self, scope: Scope<'_>) -> Result<Vec<&PacsCommand>, PacsError> {
-        match scope {
-            Scope::Global => Ok(self.global.iter().collect()),
-            Scope::Project(name) => Ok(self.get_project(name)?.commands.iter().collect()),
-        }
+        let mut cmds: Vec<&PacsCommand> = match scope {
+            Scope::Global => self.global.iter().collect(),
+            Scope::Project(name) => self.get_project(name)?.commands.iter().collect(),
+        };
+        cmds.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(cmds)
     }
 
     /// Returns commands filtered by tag.
