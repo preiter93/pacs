@@ -8,9 +8,10 @@
 
 ## Install
 
-```sh
-cargo install pacs
-```
+| Package manager                                        | Command                            |
+|--------------------------------------------------------|------------------------------------|
+| [Homebrew](https://github.com/preiter93/homebrew-pacs) | `brew install preiter93/pacs/pacs` |
+| [Cargo](https://crates.io/crates/pacs)                 | `cargo install pacs`               |
 
 ## Usage
 
