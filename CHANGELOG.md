@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0-beta.3] - 2026-01-24
+
+### 🚀 Features
+
+- *(pacs)* Add context model and command expansion
+
+### ⚙️ Miscellaneous Tasks
+
+- *(readme)* Update usage section
+- *(readme)* Update context and placeholder section
+- Fix clippy warnings
+
 ## [0.1.0-beta.2] - 2026-01-24
 
 ### 🚀 Features
