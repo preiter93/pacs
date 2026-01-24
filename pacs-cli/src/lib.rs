@@ -383,7 +383,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 }
                 println!();
                 for line in cmd.command.lines() {
-                    println!("  {BLUE}{line}{RESET}");
+                    println!("{BLUE}{line}{RESET}");
                 }
                 return Ok(());
             }
@@ -423,7 +423,7 @@ pub fn run(cli: Cli) -> Result<()> {
                         } else {
                             println!("{}:", cmd.name);
                             for line in cmd.command.lines() {
-                                println!("  {BLUE}{line}{RESET}");
+                                println!("{BLUE}{line}{RESET}");
                             }
                             println!();
                         }
