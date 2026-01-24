@@ -805,10 +805,10 @@ pub fn run(cli: Cli) -> Result<()> {
                         } else {
                             String::new()
                         };
-                        println!("{BOLD}{}{active_marker}{RESET}", env.name);
+                        println!("{CYAN}{BOLD}{}{active_marker}{RESET}", env.name);
                         if !env.values.is_empty() {
                             for (k, v) in &env.values {
-                                println!("  {k} = {v}");
+                                println!("  {GREY}{k}{RESET} = {WHITE}{v}{RESET}");
                             }
                         }
                     }
