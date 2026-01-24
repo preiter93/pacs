@@ -18,8 +18,8 @@ pacs edit build                 # edit in $EDITOR
 pacs rm build                   # delete it
 
 pacs project add myproj         # create a project
-pacs project activate myproj    # set active project
-pacs project deactivate         # clear active project
+pacs project switch myproj      # set active project
+pacs project clear              # clear active project
 ```
 
 ## Example Output
@@ -48,7 +48,7 @@ Define project-specific contexts and values (for the active project):
 pacs context add dev
 pacs context edit
 pacs context list
-pacs context activate dev
+pacs context switch dev
 ```
 
 Listing, running, and copying with a specific context (active project):

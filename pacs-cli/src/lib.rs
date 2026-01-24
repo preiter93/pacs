@@ -92,11 +92,11 @@ pub enum ProjectCommands {
     #[command(visible_alias = "ls")]
     List,
 
-    /// Set a project as active
-    Activate(ProjectActivateArgs),
+    /// Switch to a project
+    Switch(ProjectSwitchArgs),
 
     /// Clear the active project
-    Deactivate,
+    Clear,
 
     /// Show the current active project
     Active,
@@ -118,8 +118,8 @@ pub enum ContextCommands {
     #[command(visible_alias = "ls")]
     List(ContextListArgs),
 
-    /// Activates a context
-    Activate(ContextActivateArgs),
+    /// Switch to a context
+    Switch(ContextSwitchArgs),
 
     /// Show the active context for a project
     Active(ContextActiveArgs),
@@ -143,8 +143,8 @@ pub struct ProjectRemoveArgs {
 }
 
 #[derive(Args, Debug)]
-pub struct ProjectActivateArgs {
-    /// Name of the project to activate
+pub struct ProjectSwitchArgs {
+    /// Name of the project to switch to
     #[arg(add = ArgValueCandidates::new(complete_projects))]
     pub name: String,
 }
@@ -184,17 +184,10 @@ pub struct ContextListArgs {
 }
 
 #[derive(Args, Debug)]
-pub struct ContextActivateArgs {
-    /// Context name to activate
+pub struct ContextSwitchArgs {
+    /// Context name to switch to
     pub name: String,
 
-    /// Target project (defaults to active project if omitted)
-    #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
-    pub project: Option<String>,
-}
-
-#[derive(Args, Debug)]
-pub struct ContextDeactivateArgs {
     /// Target project (defaults to active project if omitted)
     #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
     pub project: Option<String>,
@@ -641,14 +634,13 @@ pub fn run(cli: Cli) -> Result<()> {
                     }
                 }
             }
-            ProjectCommands::Activate(args) => {
+            ProjectCommands::Switch(args) => {
                 pacs.set_active_project(&args.name)
-                    .with_context(|| format!("Failed to activate project '{}'", args.name))?;
-                println!("Project '{}' is now active.", args.name);
+                    .with_context(|| format!("Failed to switch to project '{}'", args.name))?;
+                println!("Switched to project '{}'.", args.name);
             }
-            ProjectCommands::Deactivate => {
-                pacs.clear_active_project()
-                    .context("Failed to deactivate project")?;
+            ProjectCommands::Clear => {
+                pacs.clear_active_project()?;
                 println!("Active project cleared.");
             }
             ProjectCommands::Active => {
@@ -813,7 +805,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     }
                 }
             }
-            ContextCommands::Activate(args) => {
+            ContextCommands::Switch(args) => {
                 let project = if let Some(p) = args.project.clone() {
                     p
                 } else if let Some(active) = pacs.get_active_project()? {
@@ -824,12 +816,12 @@ pub fn run(cli: Cli) -> Result<()> {
                 pacs.activate_context(&project, &args.name)
                     .with_context(|| {
                         format!(
-                            "Failed to activate context '{}' for project '{}'",
+                            "Failed to switch to context '{}' for project '{}'",
                             args.name, project
                         )
                     })?;
                 println!(
-                    "Context '{}' activated for project '{}'.",
+                    "Switched to context '{}' for project '{}'.",
                     args.name, project
                 );
             }
