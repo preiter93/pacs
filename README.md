@@ -30,13 +30,13 @@ pacs project active             # show active project
 
 ## Example Output
 
-```shell
-# pacs ls
+```just
+MyProject
 
-── MyProject ──
 hello-world:
 echo "Hello World"
 
+[k8s]
 get-pods:
 kubectl --context dev get pods -o wide
 ```
