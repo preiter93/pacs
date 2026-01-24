@@ -4,7 +4,7 @@
 
 **P**roject **A**ware **C**ommand **S**torage - A CLI for managing and running saved shell commands.
 
-![Demo](pacs/demo/demo.gif)
+![Demo](https://raw.githubusercontent.com/preiter93/pacs/main/pacs/demo/demo.gif)
 
 ## Install
 
