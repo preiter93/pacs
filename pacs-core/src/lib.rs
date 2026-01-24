@@ -508,32 +508,49 @@ impl Pacs {
         }
     }
 
+    /// Resolves a command with scope and context, returning an expanded command ready to execute.
+    /// Handles auto-resolution (try active project, then global) when scope is None.
+    fn resolve_command(
+        &self,
+        name: &str,
+        scope: Option<Scope<'_>>,
+        context: Option<&str>,
+    ) -> Result<PacsCommand, PacsError> {
+        match scope {
+            Some(Scope::Global) => {
+                let cmd = self.get_command(name, Scope::Global)?;
+                Ok(cmd.clone())
+            }
+            Some(Scope::Project(proj)) => {
+                let cmd = self.get_command(name, Scope::Project(proj))?;
+                let ctx =
+                    context.or_else(|| self.get_project(proj).ok()?.active_context.as_deref());
+                self.expand_command_with_context(cmd, proj, ctx)
+            }
+            None => {
+                // Auto-resolve: try active project first, then global
+                if let Some(active) = self.get_active_project()?
+                    && let Ok(cmd) = self.get_command(name, Scope::Project(&active))
+                {
+                    let ctx = context
+                        .or_else(|| self.get_project(&active).ok()?.active_context.as_deref());
+                    self.expand_command_with_context(cmd, &active, ctx)
+                } else {
+                    let cmd = self.get_command(name, Scope::Global)?;
+                    Ok(cmd.clone())
+                }
+            }
+        }
+    }
+
     pub fn run(
         &self,
         name: &str,
         scope: Option<Scope<'_>>,
         context: Option<&str>,
     ) -> Result<(), PacsError> {
-        let active_project = self.get_active_project()?;
-        let scope = scope.unwrap_or_else(|| {
-            active_project
-                .as_ref()
-                .map_or(Scope::Global, |p| Scope::Project(p.as_str()))
-        });
-
-        let context = context.or_else(|| match scope {
-            Scope::Project(name) => self.get_project(name).ok()?.active_context.as_deref(),
-            Scope::Global => None,
-        });
-
-        let cmd = self.get_command(name, scope)?;
-        match scope {
-            Scope::Global => Self::execute(cmd),
-            Scope::Project(project_name) => {
-                let command = self.expand_command_with_context(cmd, project_name, context)?;
-                Self::execute(&command)
-            }
-        }
+        let command = self.resolve_command(name, scope, context)?;
+        Self::execute(&command)
     }
 
     pub fn copy(
@@ -542,25 +559,7 @@ impl Pacs {
         scope: Option<Scope<'_>>,
         context: Option<&str>,
     ) -> Result<PacsCommand, PacsError> {
-        let active_project = self.get_active_project()?;
-        let scope = scope.unwrap_or_else(|| {
-            active_project
-                .as_ref()
-                .map_or(Scope::Global, |p| Scope::Project(p.as_str()))
-        });
-
-        let context = context.or_else(|| match scope {
-            Scope::Project(name) => self.get_project(name).ok()?.active_context.as_deref(),
-            Scope::Global => None,
-        });
-
-        let cmd = self.get_command(name, scope)?;
-        match scope {
-            Scope::Global => Ok(cmd.clone()),
-            Scope::Project(project_name) => {
-                self.expand_command_with_context(cmd, project_name, context)
-            }
-        }
+        self.resolve_command(name, scope, context)
     }
 
     fn load_global(base: &std::path::Path) -> Result<Vec<PacsCommand>, PacsError> {
@@ -1311,5 +1310,54 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(dev.len(), 1);
         assert_eq!(dev[0].name, "a");
+    }
+
+    #[test]
+    fn test_global_fallback_with_active_project() {
+        let mut pacs = temp_pacs();
+
+        // Add a global command
+        pacs.add_command(
+            PacsCommand {
+                name: "global-cmd".into(),
+                command: "echo global".into(),
+                cwd: None,
+                tag: String::new(),
+            },
+            Scope::Global,
+        )
+        .unwrap();
+
+        // Create a project and add a project-specific command
+        pacs.init_project("myproject", None).unwrap();
+        pacs.add_command(
+            PacsCommand {
+                name: "project-cmd".into(),
+                command: "echo project".into(),
+                cwd: None,
+                tag: String::new(),
+            },
+            Scope::Project("myproject"),
+        )
+        .unwrap();
+
+        // Set the project as active
+        pacs.set_active_project("myproject").unwrap();
+
+        // Test that we can copy the project command
+        let cmd = pacs.copy("project-cmd", None, None).unwrap();
+        assert_eq!(cmd.name, "project-cmd");
+        assert_eq!(cmd.command, "echo project");
+
+        // Test that we can copy the global command even with active project
+        let cmd = pacs.copy("global-cmd", None, None).unwrap();
+        assert_eq!(cmd.name, "global-cmd");
+        assert_eq!(cmd.command, "echo global");
+
+        // Test that non-existent command still fails
+        assert!(matches!(
+            pacs.copy("nonexistent", None, None),
+            Err(PacsError::CommandNotFound(_))
+        ));
     }
 }
