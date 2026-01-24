@@ -15,16 +15,16 @@ cargo install pacs
 ## Usage
 
 ```sh
-pacs init                       # initialize pacs
-pacs add build "cargo build"    # save a command
+pacs init                       # initialize pacs and create first project
+pacs add build "cargo build"    # save a command to active project
 pacs run build                  # run it
-pacs ls                         # list all commands
+pacs ls                         # list all commands in active project
 pacs edit build                 # edit in $EDITOR
 pacs rm build                   # delete it
 
 pacs project add MyProject      # create a project
 pacs project switch MyProject   # set active project
-pacs project clear              # clear active project
+pacs project active             # show active project
 ```
 
 ## Example Output
@@ -32,11 +32,10 @@ pacs project clear              # clear active project
 ```shell
 # pacs ls
 
-── Global ──
-hello-world
+── MyProject ──
+hello-world:
 echo "Hello World"
 
-── MyProject ──
 get-pods:
 kubectl --context dev get pods -o wide
 ```
@@ -48,15 +47,15 @@ Use double curly braces to mark placeholders:
 pacs add get-pods -t k8s 'kubectl --context {{kube-context}} get pods -o wide'
 ```
 
-Define project-specific environments and values (for the active project):
+Define project-specific environments and values:
 ```sh
-pacs env add dev            # add an environment
+pacs env add dev            # add an environment to active project
 pacs env edit               # edit environments in $EDITOR
 pacs env ls                 # list all environments
 pacs env switch dev         # set active environment
 ```
 
-Listing, running, and copying with a specific environment (active project):
+Listing, running, and copying with a specific environment:
 ```sh
 pacs ls -e dev              # list with environment
 pacs run get-pods -e dev    # run with environment
@@ -64,6 +63,7 @@ pacs copy get-pods -e dev   # copy with environment
 ```
 
 Notes:
+- All commands are project-scoped. You must have an active project to add or run commands.
 - If no active environment is set (or values are missing), pacs shows the raw unexpanded command.
 - If active environment is set and environment values are defined, pacs expands the command before listing, running or copying it.
 

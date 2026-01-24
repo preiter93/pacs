@@ -1,4 +1,4 @@
-use pacs_core::{Pacs, PacsCommand, PacsError, Scope};
+use pacs_core::{Pacs, PacsCommand, PacsError};
 
 fn main() -> Result<(), PacsError> {
     let mut pacs = Pacs::init_home()?;
@@ -6,6 +6,7 @@ fn main() -> Result<(), PacsError> {
     // Delete project if it exists then create a new one
     let _ = pacs.delete_project("example");
     pacs.init_project("example", None)?;
+    pacs.set_active_project("example")?;
 
     // Add commands
     pacs.add_command(
@@ -15,7 +16,7 @@ fn main() -> Result<(), PacsError> {
             cwd: None,
             tag: "misc".into(),
         },
-        Scope::Project("example"),
+        Some("example"),
     )?;
 
     pacs.add_command(
@@ -25,7 +26,7 @@ fn main() -> Result<(), PacsError> {
             cwd: None,
             tag: "release".into(),
         },
-        Scope::Project("example"),
+        Some("example"),
     )?;
 
     pacs.add_command(
@@ -35,19 +36,19 @@ fn main() -> Result<(), PacsError> {
             cwd: None,
             tag: "release".into(),
         },
-        Scope::Project("example"),
+        Some("example"),
     )?;
 
     // List all project commands
     println!("[COMMANDS]");
-    for cmd in pacs.list(Some(Scope::Project("example")), None)? {
+    for cmd in pacs.list(Some("example"), None)? {
         println!("- {} [{}]", cmd.name, cmd.tag);
     }
 
     // List only release group
     println!("\n[RELEASE]");
     for cmd in pacs
-        .list(Some(Scope::Project("example")), None)?
+        .list(Some("example"), None)?
         .into_iter()
         .filter(|c| c.tag == "release")
     {
@@ -56,7 +57,7 @@ fn main() -> Result<(), PacsError> {
 
     // Run command
     println!("\nRun command:");
-    pacs.run("hello_world", Some(Scope::Project("example")), None)?;
+    pacs.run("hello_world", Some("example"), None)?;
 
     Ok(())
 }

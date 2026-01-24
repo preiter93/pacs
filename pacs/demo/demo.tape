@@ -22,10 +22,11 @@ Type "# PACS - Project Aware Command Storage" Sleep 300ms Enter
 Sleep 800ms
 
 Type "# Initialize pacs" Sleep 300ms Enter
-Type "pacs init" Sleep 300ms Enter
+Type "pacs init" Sleep 300ms Enter Sleep 300ms
+Type "MyProject" Sleep 300ms Enter  # Enter project name
 Sleep 800ms
 
-Type@80ms "# Add some global commands" Sleep 300ms Enter
+Type@80ms "# Add commands to the active project" Sleep 300ms Enter
 Type "pacs add hello 'echo Hello World!'" Sleep 300ms Enter
 Sleep 800ms
 
@@ -36,15 +37,11 @@ Type@80ms "# List all commands" Sleep 300ms Enter
 Type "pacs ls" Sleep 300ms Enter
 Sleep 1.5s
 
-Type@80ms "# Create a project" Sleep 300ms Enter
-Type "pacs project add MyProject" Sleep 300ms Enter
-Sleep 800ms
-
-Type@80ms "# Add project-specific commands" Sleep 300ms Enter
+Type@80ms "# Add more commands" Sleep 300ms Enter
 Type "pacs add -t k8s deploy 'kubectl apply -f deploy.yaml'" Sleep 300ms Enter
 Sleep 800ms
 
-Type@80ms "# List commands (shows both global and project)" Sleep 300ms Enter
+Type@80ms "# List commands in active project" Sleep 300ms Enter
 Type "pacs ls" Sleep 300ms Enter
 Sleep 2s
 
@@ -52,7 +49,7 @@ Type@80ms "# Add a command with placeholders" Sleep 300ms Enter
 Type "pacs add -t k8s pods 'kubectl --context project-{{env}} get pods'" Sleep 300ms Enter
 Sleep 800ms
 
-Type@80ms "# Create different environments" Sleep 300ms Enter
+Type@80ms "# Create different environments for the project" Sleep 300ms Enter
 Type "pacs env add dev" Sleep 300ms Enter
 Sleep 400ms
 
@@ -80,7 +77,7 @@ Sleep 800ms
 Type "pacs env ls" Sleep 300ms Enter
 Sleep 1.5s
 
-Type@80ms "# Show command details within environment" Sleep 300ms Enter
+Type@80ms "# Show commands with environment values expanded" Sleep 300ms Enter
 Type "pacs ls" Sleep 300ms Enter
 Sleep 1.5s
 

@@ -5,13 +5,14 @@ use std::collections::BTreeMap;
 use std::env;
 use std::fmt::Write;
 use std::fs;
+use std::io::{self, Write as IoWrite};
 use std::process::Command;
 
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
 use clap_complete::{ArgValueCandidates, CompletionCandidate};
 
-use pacs_core::{Pacs, PacsCommand, Scope};
+use pacs_core::{Pacs, PacsCommand};
 
 const BOLD: &str = "\x1b[1m";
 const GREEN: &str = "\x1b[32m";
@@ -212,10 +213,6 @@ pub struct AddArgs {
     #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
     pub project: Option<String>,
 
-    /// Add to global scope (default: adds to active project if set, otherwise global)
-    #[arg(short, long)]
-    pub global: bool,
-
     /// Working directory for the command
     #[arg(short, long)]
     pub cwd: Option<String>,
@@ -275,10 +272,6 @@ pub struct ListArgs {
     /// List commands from a specific project only
     #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
     pub project: Option<String>,
-
-    /// List only global commands
-    #[arg(short, long)]
-    pub global: bool,
 
     /// Filter commands by tag
     #[arg(short, long, add = ArgValueCandidates::new(complete_tags))]
@@ -354,6 +347,20 @@ pub fn run(cli: Cli) -> Result<()> {
     match cli.command {
         Commands::Init => {
             println!("Pacs initialized at ~/.pacs/");
+
+            // Ask user to create their first project
+            print!("Enter a name for your first project: ");
+            io::stdout().flush()?;
+            let mut project_name = String::new();
+            io::stdin().read_line(&mut project_name)?;
+            let project_name = project_name.trim();
+
+            if project_name.is_empty() {
+                anyhow::bail!("No project name entered");
+            }
+
+            pacs.init_project(project_name, None)?;
+            pacs.set_active_project(project_name)?;
         }
 
         Commands::Add(args) => {
@@ -399,24 +406,21 @@ pub fn run(cli: Cli) -> Result<()> {
                 tag: args.tag,
             };
 
-            // Determine scope: explicit project > global flag > active project > global
-            let scope_name: Option<String> = if let Some(ref p) = args.project {
-                Some(p.clone())
-            } else if args.global {
-                None
+            pacs.add_command(pacs_cmd, args.project.as_deref())
+                .with_context(|| format!("Failed to add command '{}'", args.name))?;
+
+            // Get the project name for the success message
+            let project_name = if let Some(ref p) = args.project {
+                p.clone()
             } else {
                 pacs.get_active_project()?
+                    .ok_or_else(|| anyhow::anyhow!("No active project set"))?
             };
 
-            if let Some(ref project) = scope_name {
-                pacs.add_command(pacs_cmd, Scope::Project(project))
-                    .with_context(|| format!("Failed to add command '{}'", args.name))?;
-                println!("Command '{}' added to project '{}'.", args.name, project);
-            } else {
-                pacs.add_command(pacs_cmd, Scope::Global)
-                    .with_context(|| format!("Failed to add command '{}'", args.name))?;
-                println!("Command '{}' added to global.", args.name);
-            }
+            println!(
+                "Command '{}' added to project '{}'.",
+                args.name, project_name
+            );
         }
 
         Commands::Remove(args) => {
@@ -548,38 +552,24 @@ pub fn run(cli: Cli) -> Result<()> {
             };
 
             if let Some(ref project) = args.project {
-                let commands =
-                    pacs.list(Some(Scope::Project(project)), args.environment.as_deref())?;
+                let commands = pacs.list(Some(project), args.environment.as_deref())?;
                 print_tagged(&commands, project);
-            } else if args.global {
-                let commands = pacs.list(Some(Scope::Global), None)?;
-                print_tagged(&commands, "Global");
             } else {
-                let commands = pacs.list(Some(Scope::Global), None)?;
-                print_tagged(&commands, "Global");
-
-                if let Some(active_project) = pacs.get_active_project()? {
-                    let commands = pacs.list(
-                        Some(Scope::Project(&active_project)),
-                        args.environment.as_deref(),
-                    )?;
-                    print_tagged(&commands, &active_project);
-                } else {
-                    for project in &pacs.projects {
-                        let commands = pacs.list(
-                            Some(Scope::Project(&project.name)),
-                            args.environment.as_deref(),
-                        )?;
-                        print_tagged(&commands, &project.name);
-                    }
-                }
+                let active_project = pacs.get_active_project()?.ok_or_else(|| {
+                    anyhow::anyhow!("No active project. Use 'pacs project add' to create one or 'pacs project switch' to activate one.")
+                })?;
+                let commands = pacs.list(None, args.environment.as_deref())?;
+                print_tagged(&commands, &active_project);
             }
         }
 
         Commands::Run(args) => {
-            let scope = args.project.as_ref().map(|p| Scope::Project(p.as_str()));
-            pacs.run(&args.name, scope, args.environment.as_deref())
-                .with_context(|| format!("Failed to run command '{}'", args.name))?;
+            pacs.run(
+                &args.name,
+                args.project.as_deref(),
+                args.environment.as_deref(),
+            )
+            .with_context(|| format!("Failed to run command '{}'", args.name))?;
         }
 
         Commands::Copy(args) => {
