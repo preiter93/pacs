@@ -871,6 +871,23 @@ impl Pacs {
         tags
     }
 
+    /// Returns all context names for the active project or specified project.
+    #[must_use]
+    pub fn suggest_contexts(&self, project_name: Option<&str>) -> Vec<String> {
+        let project = if let Some(name) = project_name {
+            self.get_project(name).ok()
+        } else {
+            self.get_active_project()
+                .ok()
+                .flatten()
+                .and_then(|name| self.get_project(&name).ok())
+        };
+
+        project
+            .map(|p| p.contexts.iter().map(|c| c.name.clone()).collect())
+            .unwrap_or_default()
+    }
+
     /// Fuzzy search commands by name or content, returns matches sorted by relevance.
     #[must_use]
     pub fn search(&self, query: &str) -> Vec<&PacsCommand> {

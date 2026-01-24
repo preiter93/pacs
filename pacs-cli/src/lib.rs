@@ -238,8 +238,8 @@ pub struct CopyArgs {
     #[arg(add = ArgValueCandidates::new(complete_commands))]
     pub name: String,
 
-    /// Use a specific context for expansion before copying
-    #[arg(short = 'c', long = "context")]
+    /// Use a specific context when expanding placeholders
+    #[arg(short = 'c', long = "context", add = ArgValueCandidates::new(complete_contexts))]
     pub context: Option<String>,
 }
 
@@ -292,7 +292,7 @@ pub struct ListArgs {
     pub tag: Option<String>,
 
     /// Show commands resolved for a specific context (project scope)
-    #[arg(short = 'c', long = "context")]
+    #[arg(short = 'c', long = "context", add = ArgValueCandidates::new(complete_contexts))]
     pub context: Option<String>,
 
     /// Show only command names (no bodies)
@@ -311,7 +311,7 @@ pub struct RunArgs {
     pub project: Option<String>,
 
     /// Use a specific context for this run
-    #[arg(short = 'c', long = "context")]
+    #[arg(short = 'c', long = "context", add = ArgValueCandidates::new(complete_contexts))]
     pub context: Option<String>,
 }
 
@@ -340,6 +340,16 @@ fn complete_tags() -> Vec<CompletionCandidate> {
         return vec![];
     };
     pacs.suggest_tags()
+        .into_iter()
+        .map(CompletionCandidate::new)
+        .collect()
+}
+
+fn complete_contexts() -> Vec<CompletionCandidate> {
+    let Ok(pacs) = Pacs::init_home() else {
+        return vec![];
+    };
+    pacs.suggest_contexts(None)
         .into_iter()
         .map(CompletionCandidate::new)
         .collect()
