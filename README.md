@@ -13,6 +13,7 @@ cargo install pacs
 ## Usage
 
 ```sh
+pacs init                       # initialize pacs
 pacs add build "cargo build"    # save a command
 pacs run build                  # run it
 pacs ls                         # list all commands
