@@ -607,7 +607,9 @@ pub fn run(cli: Cli) -> Result<()> {
             ProjectCommands::Add(args) => {
                 pacs.init_project(&args.name, args.path)
                     .with_context(|| format!("Failed to create project '{}'", args.name))?;
-                println!("Project '{}' created.", args.name);
+                pacs.set_active_project(&args.name)
+                    .with_context(|| format!("Failed to switch to project '{}'", args.name))?;
+                println!("Project '{}' created and activated.", args.name);
             }
             ProjectCommands::Remove(args) => {
                 pacs.delete_project(&args.name)
@@ -670,8 +672,15 @@ pub fn run(cli: Cli) -> Result<()> {
                             args.name, project
                         )
                     })?;
+                pacs.activate_environment(&project, &args.name)
+                    .with_context(|| {
+                        format!(
+                            "Failed to activate environment '{}' in project '{}'",
+                            args.name, project
+                        )
+                    })?;
                 println!(
-                    "Environment '{}' added to project '{}'.",
+                    "Environment '{}' added and activated in project '{}'.",
                     args.name, project
                 );
             }
