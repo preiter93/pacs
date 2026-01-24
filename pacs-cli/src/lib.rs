@@ -705,6 +705,19 @@ pub fn run(cli: Cli) -> Result<()> {
                 );
             }
             EnvironmentCommands::Edit(args) => {
+                #[derive(serde::Deserialize)]
+                struct EditDoc {
+                    #[serde(default)]
+                    active_environment: Option<String>,
+                    #[serde(default)]
+                    environments: std::collections::BTreeMap<String, EnvValues>,
+                }
+                #[derive(serde::Deserialize)]
+                struct EnvValues {
+                    #[serde(default)]
+                    values: BTreeMap<String, String>,
+                }
+
                 let editor = env::var("VISUAL")
                     .ok()
                     .or_else(|| env::var("EDITOR").ok())
@@ -725,19 +738,6 @@ pub fn run(cli: Cli) -> Result<()> {
                     .iter()
                     .find(|p| p.name.eq_ignore_ascii_case(&project))
                     .with_context(|| format!("Project '{project}' not found"))?;
-
-                #[derive(serde::Deserialize)]
-                struct EditDoc {
-                    #[serde(default)]
-                    active_environment: Option<String>,
-                    #[serde(default)]
-                    environments: std::collections::BTreeMap<String, EnvValues>,
-                }
-                #[derive(serde::Deserialize)]
-                struct EnvValues {
-                    #[serde(default)]
-                    values: BTreeMap<String, String>,
-                }
 
                 let mut buf = String::new();
                 if let Some(active_env) = &project_ref.active_environment {
