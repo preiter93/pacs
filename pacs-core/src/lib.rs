@@ -544,9 +544,9 @@ impl Pacs {
     }
 
     fn save_global(&self) -> Result<(), PacsError> {
-        let global = GlobalCommands {
-            commands: self.global.clone(),
-        };
+        let mut commands = self.global.clone();
+        commands.sort_by(|a, b| a.name.cmp(&b.name));
+        let global = GlobalCommands { commands };
         fs::write(
             self.base_dir.join("global.toml"),
             toml::to_string_pretty(&global)?,
@@ -555,9 +555,16 @@ impl Pacs {
     }
 
     fn save_project(&self, project: &Project) -> Result<(), PacsError> {
+        let mut sorted = project.commands.clone();
+        sorted.sort_by(|a, b| a.name.cmp(&b.name));
+        let temp = Project {
+            name: project.name.clone(),
+            path: project.path.clone(),
+            commands: sorted,
+        };
         fs::write(
             self.project_path(&project.name),
-            toml::to_string_pretty(project)?,
+            toml::to_string_pretty(&temp)?,
         )?;
         Ok(())
     }
