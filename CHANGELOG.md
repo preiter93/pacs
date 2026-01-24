@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0] - 2026-01-24
+
+### 🚀 Features
+
+- *(all)* Add context model and command expansion
+- *(cli)* Add autocomplete for contexts
+- *(cli)* Rename activate -> switch, deactivate -> clear
+- *(cli)* Colorize "env ls" outpout
+- *(cli)* Auto switch to new project/env
+
+### 🐛 Bug Fixes
+
+- *(core)* Allow copy and run commands to fall back to global scope
+
+### 📚 Documentation
+
+- *(readme)* Add badges to README
+- *(readme)* Extend usage section
+- *(demo)* Add demo tape and gif
+- *(demo)* Update demo tape
+
+### 🔧 Refactor
+
+- *(core)* Simplify pacs core api
+- *(all)* Rename context to env
+
+### ⚙️ Miscellaneous Tasks
+
+- *(readme)* Update usage section
+- *(readme)* Update context and placeholder section
+- *(lint)* Fix clippy warnings
+- *(lint)* Fix clippy warnings
+
 ## [0.1.0-beta.2] - 2026-01-24
 
 ### 🚀 Features
