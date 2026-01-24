@@ -196,6 +196,10 @@ pub struct ListArgs {
     /// Filter commands by tag
     #[arg(short, long, add = ArgValueCandidates::new(complete_tags))]
     pub tag: Option<String>,
+
+    /// Show only command names (no bodies)
+    #[arg(short, long)]
+    pub names: bool,
 }
 
 #[derive(Args, Debug)]
@@ -414,11 +418,15 @@ pub fn run(cli: Cli) -> Result<()> {
                     }
 
                     for cmd in cmds {
-                        println!("{}:", cmd.name);
-                        for line in cmd.command.lines() {
-                            println!("  {BLUE}{line}{RESET}");
+                        if args.names {
+                            println!("{}", cmd.name);
+                        } else {
+                            println!("{}:", cmd.name);
+                            for line in cmd.command.lines() {
+                                println!("  {BLUE}{line}{RESET}");
+                            }
+                            println!();
                         }
-                        println!();
                     }
                 }
             };
