@@ -5,7 +5,7 @@
 ## Install
 
 ```sh
-cargo install pacs@0.1.0-beta.2
+cargo install pacs
 ```
 
 ## Usage
@@ -17,8 +17,8 @@ pacs ls                         # list all commands
 pacs edit build                 # edit in $EDITOR
 pacs rm build                   # delete it
 
-pacs project add myproj         # create a project
-pacs project switch myproj      # set active project
+pacs project add MyProject      # create a project
+pacs project switch MyProject   # set active project
 pacs project clear              # clear active project
 ```
 
@@ -31,7 +31,7 @@ pacs project clear              # clear active project
 hello-world
 echo "Hello World"
 
-── myproj ──
+── MyProject ──
 get-pods:
 kubectl --context dev get pods -o wide
 ```
@@ -45,17 +45,17 @@ pacs add get-pods -t k8s 'kubectl --context {{kube-context}} get pods -o wide'
 
 Define project-specific contexts and values (for the active project):
 ```sh
-pacs context add dev
-pacs context edit
-pacs context list
-pacs context switch dev
+pacs context add dev        # add a context
+pacs context edit           # edit contexts in $EDITOR
+pacs context ls             # list all contexts
+pacs context switch dev     # set active context
 ```
 
 Listing, running, and copying with a specific context (active project):
 ```sh
-pacs ls -c dev
-pacs run get-pods -c dev
-pacs copy get-pods -c dev
+pacs ls -c dev              # list with context
+pacs run get-pods -c dev    # run with context
+pacs copy get-pods -c dev   # copy with context
 ```
 
 Notes:

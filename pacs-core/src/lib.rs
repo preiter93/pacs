@@ -3,8 +3,8 @@
 //! ## Main API
 //!
 //! All commands take explicit `scope` and `context` parameters:
-//! - `scope: Option<Scope>` - None uses active project, Some(Scope::Global) or Some(Scope::Project("name"))
-//! - `context: Option<&str>` - None uses active context, Some("ctx") uses specific context
+//! - `scope: Option<Scope>` - None uses active project, `Some(Scope::Global)` or `Some(Scope::Project("name"))`
+//! - `context: Option<&str>` - None uses active context, `Some("ctx")` uses specific context
 //!
 //! **Primary functions:**
 //! - `list(scope, context)` - List commands
@@ -479,8 +479,7 @@ impl Pacs {
         let scope = scope.unwrap_or_else(|| {
             active_project
                 .as_ref()
-                .map(|p| Scope::Project(p.as_str()))
-                .unwrap_or(Scope::Global)
+                .map_or(Scope::Global, |p| Scope::Project(p.as_str()))
         });
 
         let context = context.or_else(|| match scope {
@@ -519,8 +518,7 @@ impl Pacs {
         let scope = scope.unwrap_or_else(|| {
             active_project
                 .as_ref()
-                .map(|p| Scope::Project(p.as_str()))
-                .unwrap_or(Scope::Global)
+                .map_or(Scope::Global, |p| Scope::Project(p.as_str()))
         });
 
         let context = context.or_else(|| match scope {
@@ -548,8 +546,7 @@ impl Pacs {
         let scope = scope.unwrap_or_else(|| {
             active_project
                 .as_ref()
-                .map(|p| Scope::Project(p.as_str()))
-                .unwrap_or(Scope::Global)
+                .map_or(Scope::Global, |p| Scope::Project(p.as_str()))
         });
 
         let context = context.or_else(|| match scope {
@@ -840,6 +837,7 @@ impl Pacs {
         }
     }
 
+    #[must_use]
     pub fn suggest_command_names(&self) -> Vec<String> {
         let mut names: Vec<String> = self.global.iter().map(|c| c.name.clone()).collect();
         if let Ok(Some(active)) = self.get_active_project()
