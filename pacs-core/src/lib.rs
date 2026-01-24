@@ -484,7 +484,7 @@ impl Pacs {
     }
 
     /// Resolves a command with environment, returning an expanded command ready to execute.
-    /// Requires an active project if project_name is not specified.
+    /// Requires an active project if `project_name` is not specified.
     pub fn resolve_command(
         &self,
         name: &str,
