@@ -325,7 +325,7 @@ fn complete_tags() -> Vec<CompletionCandidate> {
     let Ok(pacs) = Pacs::init_home() else {
         return vec![];
     };
-    pacs.suggest_tags()
+    pacs.suggest_tags(None)
         .into_iter()
         .map(CompletionCandidate::new)
         .collect()

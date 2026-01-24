@@ -815,11 +815,23 @@ impl Pacs {
 
     /// Returns all unique tags for shell completion.
     #[must_use]
-    pub fn suggest_tags(&self) -> Vec<String> {
-        let mut tags: Vec<String> = self
-            .projects
+    pub fn suggest_tags(&self, project_name: Option<ProjectName>) -> Vec<String> {
+        let project = if let Some(name) = project_name {
+            self.get_project(name).ok()
+        } else {
+            self.get_active_project()
+                .ok()
+                .flatten()
+                .and_then(|active| self.get_project(&active).ok())
+        };
+
+        let Some(project) = project else {
+            return Vec::new();
+        };
+
+        let mut tags: Vec<String> = project
+            .commands
             .iter()
-            .flat_map(|p| p.commands.iter())
             .map(|c| c.tag.clone())
             .filter(|t| !t.is_empty())
             .collect();
