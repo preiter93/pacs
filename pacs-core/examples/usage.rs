@@ -40,19 +40,23 @@ fn main() -> Result<(), PacsError> {
 
     // List all project commands
     println!("[COMMANDS]");
-    for cmd in pacs.list_commands(Scope::Project("example"), None)? {
+    for cmd in pacs.list(Some(Scope::Project("example")), None)? {
         println!("- {} [{}]", cmd.name, cmd.tag);
     }
 
     // List only release group
     println!("\n[RELEASE]");
-    for cmd in pacs.list_by_tag(Scope::Project("example"), "release")? {
+    for cmd in pacs
+        .list(Some(Scope::Project("example")), None)?
+        .into_iter()
+        .filter(|c| c.tag == "release")
+    {
         println!("- {}", cmd.name);
     }
 
     // Run command
     println!("\nRun command:");
-    pacs.run("hello_world", Scope::Project("example"))?;
+    pacs.run("hello_world", Some(Scope::Project("example")), None)?;
 
     Ok(())
 }

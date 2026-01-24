@@ -545,26 +545,25 @@ pub fn run(cli: Cli) -> Result<()> {
             };
 
             if let Some(ref project) = args.project {
-                let commands =
-                    pacs.list_commands(Scope::Project(project), args.context.as_deref())?;
+                let commands = pacs.list(Some(Scope::Project(project)), args.context.as_deref())?;
                 print_tagged(&commands, project);
             } else if args.global {
-                let commands = pacs.list_commands(Scope::Global, None)?;
+                let commands = pacs.list(Some(Scope::Global), None)?;
                 print_tagged(&commands, "Global");
             } else {
-                let commands = pacs.list_commands(Scope::Global, None)?;
+                let commands = pacs.list(Some(Scope::Global), None)?;
                 print_tagged(&commands, "Global");
 
                 if let Some(active_project) = pacs.get_active_project()? {
-                    let commands = pacs
-                        .list_commands(Scope::Project(&active_project), args.context.as_deref())?;
+                    let commands = pacs.list(
+                        Some(Scope::Project(&active_project)),
+                        args.context.as_deref(),
+                    )?;
                     print_tagged(&commands, &active_project);
                 } else {
                     for project in &pacs.projects {
-                        let commands = pacs.list_commands(
-                            Scope::Project(&project.name),
-                            args.context.as_deref(),
-                        )?;
+                        let commands = pacs
+                            .list(Some(Scope::Project(&project.name)), args.context.as_deref())?;
                         print_tagged(&commands, &project.name);
                     }
                 }
@@ -572,78 +571,15 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Run(args) => {
-            // If a context is provided, temporarily switch context for the target project
-            match (&args.project, &args.context) {
-                (Some(project), Some(ctx)) => {
-                    let prev_ctx = pacs.get_active_context(project).ok().flatten();
-                    pacs.activate_context(project, ctx).ok();
-                    let result = pacs.run(&args.name, Scope::Project(project));
-                    match prev_ctx {
-                        Some(prev) => {
-                            pacs.activate_context(project, &prev).ok();
-                        }
-                        None => {
-                            pacs.deactivate_context(project).ok();
-                        }
-                    }
-                    result.with_context(|| format!("Failed to run command '{}'", args.name))?;
-                }
-                (Some(project), None) => {
-                    pacs.run(&args.name, Scope::Project(project))
-                        .with_context(|| format!("Failed to run command '{}'", args.name))?;
-                }
-                (None, Some(ctx)) => {
-                    // Use active project with specified context if available
-                    if let Some(active_project) = pacs.get_active_project()? {
-                        let prev_ctx = pacs.get_active_context(&active_project).ok().flatten();
-                        pacs.activate_context(&active_project, ctx).ok();
-                        let result = pacs.run(&args.name, Scope::Project(&active_project));
-                        match prev_ctx {
-                            Some(prev) => {
-                                pacs.activate_context(&active_project, &prev).ok();
-                            }
-                            None => {
-                                pacs.deactivate_context(&active_project).ok();
-                            }
-                        }
-                        result.with_context(|| format!("Failed to run command '{}'", args.name))?;
-                    } else {
-                        anyhow::bail!("No active project. Use '--project' with '--context'.");
-                    }
-                }
-                (None, None) => {
-                    pacs.run_auto(&args.name)
-                        .with_context(|| format!("Failed to run command '{}'", args.name))?;
-                }
-            }
+            let scope = args.project.as_ref().map(|p| Scope::Project(p.as_str()));
+            pacs.run(&args.name, scope, args.context.as_deref())
+                .with_context(|| format!("Failed to run command '{}'", args.name))?;
         }
 
         Commands::Copy(args) => {
-            let cmd = match (&args.context, pacs.get_active_project()?) {
-                (Some(ctx), Some(active_project)) => {
-                    // Temporarily switch context to expand, then restore
-                    let prev_ctx = pacs.get_active_context(&active_project).ok().flatten();
-                    pacs.activate_context(&active_project, ctx).ok();
-                    let expanded = pacs
-                        .expand_command_auto(&args.name)
-                        .with_context(|| format!("Command '{}' not found", args.name));
-                    match prev_ctx {
-                        Some(prev) => {
-                            pacs.activate_context(&active_project, &prev).ok();
-                        }
-                        None => {
-                            pacs.deactivate_context(&active_project).ok();
-                        }
-                    }
-                    expanded?
-                }
-                (Some(_), None) => {
-                    anyhow::bail!("No active project. Use '--project' with '--context'.");
-                }
-                (None, _) => pacs
-                    .expand_command_auto(&args.name)
-                    .with_context(|| format!("Command '{}' not found", args.name))?,
-            };
+            let cmd = pacs
+                .copy(&args.name, None, args.context.as_deref())
+                .with_context(|| format!("Command '{}' not found", args.name))?;
             arboard::Clipboard::new()
                 .and_then(|mut cb| cb.set_text(cmd.command.trim()))
                 .map_err(|e| anyhow::anyhow!("Failed to copy to clipboard: {e}"))?;
