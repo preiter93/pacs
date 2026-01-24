@@ -19,7 +19,48 @@ pacs rm build                   # delete it
 
 pacs project add myproj         # create a project
 pacs project activate myproj    # set active project
+pacs project deactivate         # clear active project
 ```
+
+## Example Output
+
+```shell
+# pacs ls
+
+── Global ──
+hello-world
+echo "Hello World"
+
+── myproj ──
+get-pods:
+kubectl --context dev get pods -o wide
+```
+
+## Contexts and Placeholders
+
+Use double curly braces to mark placeholders:
+```sh
+pacs add get-pods -t k8s 'kubectl --context {{kube-context}} get pods -o wide'
+```
+
+Define project-specific contexts and values (for the active project):
+```sh
+pacs context add dev
+pacs context edit
+pacs context list
+pacs context activate dev
+```
+
+Listing, running, and copying with a specific context (active project):
+```sh
+pacs ls -c dev
+pacs run get-pods -c dev
+pacs copy get-pods -c dev
+```
+
+Notes:
+- If no active context is set (or values are missing), pacs shows the raw unexpanded command.
+- If active context is set and context values are defined, pacs expands the command before listing, running or copying it.
 
 ## Shell Completions
 
