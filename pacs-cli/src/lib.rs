@@ -478,8 +478,9 @@ pub fn run(cli: Cli) -> Result<()> {
 
         Commands::List(args) => {
             if let Some(ref name) = args.name {
+                // Resolve and expand the command (respects active project/environment)
                 let cmd = pacs
-                    .get_command_auto(name)
+                    .resolve_command(name, None, args.environment.as_deref())
                     .with_context(|| format!("Command '{name}' not found"))?;
                 let tag_badge = if cmd.tag.is_empty() {
                     String::new()
@@ -492,7 +493,6 @@ pub fn run(cli: Cli) -> Result<()> {
                     String::new()
                 };
                 println!("{BOLD}{CYAN}{}{RESET}{}{}", cmd.name, tag_badge, cwd_badge);
-                println!();
                 for line in cmd.command.lines() {
                     println!("{BLUE}{line}{RESET}");
                 }

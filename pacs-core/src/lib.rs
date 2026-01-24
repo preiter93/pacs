@@ -513,7 +513,7 @@ impl Pacs {
 
     /// Resolves a command with scope and environment, returning an expanded command ready to execute.
     /// Handles auto-resolution (try active project, then global) when scope is None.
-    fn resolve_command(
+    pub fn resolve_command(
         &self,
         name: &str,
         scope: Option<Scope<'_>>,
