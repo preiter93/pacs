@@ -52,18 +52,15 @@ Type@80ms "# Add a command with placeholders" Sleep 300ms Enter
 Type "pacs add -t k8s pods 'kubectl --context project-{{env}} get pods'" Sleep 300ms Enter
 Sleep 800ms
 
-Type@80ms "# Create contexts for different environments" Sleep 300ms Enter
-Type "pacs context add dev" Sleep 300ms Enter
+Type@80ms "# Create different environments" Sleep 300ms Enter
+Type "pacs env add dev" Sleep 300ms Enter
 Sleep 400ms
 
-Type "pacs context add prd" Sleep 300ms Enter
+Type "pacs env add prd" Sleep 300ms Enter
 Sleep 800ms
 
-Type "pacs context ls" Sleep 300ms Enter
-Sleep 1.5s
-
-Type@80ms "# Edit the context (opens editor)" Sleep 300ms Enter
-Type "pacs context edit" Sleep 300ms Enter
+Type@80ms "# Edit the environments (opens editor)" Sleep 300ms Enter
+Type "pacs env edit" Sleep 300ms Enter
 Sleep 1.2s
 
 # Neovim actions
@@ -76,11 +73,11 @@ Sleep 200ms
 Type ":wq" Enter
 Sleep 1s
 
-Type@80ms "# Switch to a context" Sleep 300ms Enter
-Type "pacs context switch dev" Sleep 300ms Enter
+Type@80ms "# Switch to an environment" Sleep 300ms Enter
+Type "pacs env switch dev" Sleep 300ms Enter
 Sleep 800ms
 
-Type@80ms "# Show command details within context" Sleep 300ms Enter
+Type@80ms "# Show command details within environment" Sleep 300ms Enter
 Type "pacs ls" Sleep 300ms Enter
 Sleep 1.5s
 

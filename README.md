@@ -41,31 +41,31 @@ get-pods:
 kubectl --context dev get pods -o wide
 ```
 
-## Contexts and Placeholders
+## Environments and Placeholders
 
 Use double curly braces to mark placeholders:
 ```sh
 pacs add get-pods -t k8s 'kubectl --context {{kube-context}} get pods -o wide'
 ```
 
-Define project-specific contexts and values (for the active project):
+Define project-specific environments and values (for the active project):
 ```sh
-pacs context add dev        # add a context
-pacs context edit           # edit contexts in $EDITOR
-pacs context ls             # list all contexts
-pacs context switch dev     # set active context
+pacs env add dev            # add an environment
+pacs env edit               # edit environments in $EDITOR
+pacs env ls                 # list all environments
+pacs env switch dev         # set active environment
 ```
 
-Listing, running, and copying with a specific context (active project):
+Listing, running, and copying with a specific environment (active project):
 ```sh
-pacs ls -c dev              # list with context
-pacs run get-pods -c dev    # run with context
-pacs copy get-pods -c dev   # copy with context
+pacs ls -e dev              # list with environment
+pacs run get-pods -e dev    # run with environment
+pacs copy get-pods -e dev   # copy with environment
 ```
 
 Notes:
-- If no active context is set (or values are missing), pacs shows the raw unexpanded command.
-- If active context is set and context values are defined, pacs expands the command before listing, running or copying it.
+- If no active environment is set (or values are missing), pacs shows the raw unexpanded command.
+- If active environment is set and environment values are defined, pacs expands the command before listing, running or copying it.
 
 ## Shell Completions
 

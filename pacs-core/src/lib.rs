@@ -2,14 +2,14 @@
 //!
 //! ## Main API
 //!
-//! All commands take explicit `scope` and `context` parameters:
+//! All commands take explicit `scope` and `environment` parameters:
 //! - `scope: Option<Scope>` - None uses active project, `Some(Scope::Global)` or `Some(Scope::Project("name"))`
-//! - `context: Option<&str>` - None uses active context, `Some("ctx")` uses specific context
+//! - `environment: Option<&str>` - None uses active environment, `Some("dev")` uses specific environment
 //!
 //! **Primary functions:**
-//! - `list(scope, context)` - List commands
-//! - `run(name, scope, context)` - Run a command
-//! - `copy(name, scope, context)` - Get expanded command for clipboard
+//! - `list(scope, environment)` - List commands
+//! - `run(name, scope, environment)` - Run a command
+//! - `copy(name, scope, environment)` - Get expanded command for clipboard
 //!
 //! **Helpers (search active project first, then global):**
 //! - `get_command_auto(name)` - Find command
@@ -25,6 +25,9 @@ use fuzzy_matcher::skim::SkimMatcherV2;
 use serde::{Deserialize, Serialize, Serializer, ser::SerializeStruct as _};
 use std::{fs, path::PathBuf, process::Command};
 use thiserror::Error;
+
+/// Type alias for environment names (e.g., "dev", "staging", "prod")
+pub type EnvironmentName<'a> = Option<&'a str>;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Scope<'a> {
@@ -130,10 +133,10 @@ impl PacsCommand {
     }
 }
 
-/// Context values for a named project context.
+/// Environment values for a named project environment.
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
-pub struct Context {
-    /// Context identifier (e.g., "dev", "stg").
+pub struct Environment {
+    /// Environment identifier (e.g., "dev", "stg").
     pub name: String,
     /// Key-value pairs used to render placeholders like `{key}`.
     #[serde(default)]
@@ -150,12 +153,12 @@ pub struct Project {
     /// Commands belonging to this project.
     #[serde(default)]
     pub commands: Vec<PacsCommand>,
-    /// Contexts defined for this project.
+    /// Environments defined for this project.
     #[serde(default)]
-    pub contexts: Vec<Context>,
-    /// The active context name used to render placeholders for this project.
+    pub environments: Vec<Environment>,
+    /// The active environment name used to render placeholders for this project.
     #[serde(default)]
-    pub active_context: Option<String>,
+    pub active_environment: Option<String>,
 }
 
 /// Wrapper for global commands to enable proper TOML serialization.
@@ -274,8 +277,8 @@ impl Pacs {
             name: name.to_string(),
             path,
             commands: Vec::new(),
-            contexts: Vec::new(),
-            active_context: None,
+            environments: Vec::new(),
+            active_environment: None,
         };
 
         self.save_project(&project)?;
@@ -473,7 +476,7 @@ impl Pacs {
     pub fn list(
         &self,
         scope: Option<Scope<'_>>,
-        context: Option<&str>,
+        environment: EnvironmentName<'_>,
     ) -> Result<Vec<PacsCommand>, PacsError> {
         let active_project = self.get_active_project()?;
         let scope = scope.unwrap_or_else(|| {
@@ -482,8 +485,8 @@ impl Pacs {
                 .map_or(Scope::Global, |p| Scope::Project(p.as_str()))
         });
 
-        let context = context.or_else(|| match scope {
-            Scope::Project(name) => self.get_project(name).ok()?.active_context.as_deref(),
+        let environment = environment.or_else(|| match scope {
+            Scope::Project(name) => self.get_project(name).ok()?.active_environment.as_deref(),
             Scope::Global => None,
         });
 
@@ -498,7 +501,7 @@ impl Pacs {
                 let mut cmds: Vec<PacsCommand> = Vec::with_capacity(project.commands.len());
 
                 for c in &project.commands {
-                    let pc = self.expand_command_with_context(c, project_name, context)?;
+                    let pc = self.expand_command_with_environment(c, project_name, environment)?;
                     cmds.push(pc);
                 }
 
@@ -508,13 +511,13 @@ impl Pacs {
         }
     }
 
-    /// Resolves a command with scope and context, returning an expanded command ready to execute.
+    /// Resolves a command with scope and environment, returning an expanded command ready to execute.
     /// Handles auto-resolution (try active project, then global) when scope is None.
     fn resolve_command(
         &self,
         name: &str,
         scope: Option<Scope<'_>>,
-        context: Option<&str>,
+        environment: EnvironmentName<'_>,
     ) -> Result<PacsCommand, PacsError> {
         match scope {
             Some(Scope::Global) => {
@@ -523,18 +526,22 @@ impl Pacs {
             }
             Some(Scope::Project(proj)) => {
                 let cmd = self.get_command(name, Scope::Project(proj))?;
-                let ctx =
-                    context.or_else(|| self.get_project(proj).ok()?.active_context.as_deref());
-                self.expand_command_with_context(cmd, proj, ctx)
+                let env = environment
+                    .or_else(|| self.get_project(proj).ok()?.active_environment.as_deref());
+                self.expand_command_with_environment(cmd, proj, env)
             }
             None => {
                 // Auto-resolve: try active project first, then global
                 if let Some(active) = self.get_active_project()?
                     && let Ok(cmd) = self.get_command(name, Scope::Project(&active))
                 {
-                    let ctx = context
-                        .or_else(|| self.get_project(&active).ok()?.active_context.as_deref());
-                    self.expand_command_with_context(cmd, &active, ctx)
+                    let env = environment.or_else(|| {
+                        self.get_project(&active)
+                            .ok()?
+                            .active_environment
+                            .as_deref()
+                    });
+                    self.expand_command_with_environment(cmd, &active, env)
                 } else {
                     let cmd = self.get_command(name, Scope::Global)?;
                     Ok(cmd.clone())
@@ -547,9 +554,9 @@ impl Pacs {
         &self,
         name: &str,
         scope: Option<Scope<'_>>,
-        context: Option<&str>,
+        environment: EnvironmentName<'_>,
     ) -> Result<(), PacsError> {
-        let command = self.resolve_command(name, scope, context)?;
+        let command = self.resolve_command(name, scope, environment)?;
         Self::execute(&command)
     }
 
@@ -557,9 +564,9 @@ impl Pacs {
         &self,
         name: &str,
         scope: Option<Scope<'_>>,
-        context: Option<&str>,
+        environment: EnvironmentName<'_>,
     ) -> Result<PacsCommand, PacsError> {
-        self.resolve_command(name, scope, context)
+        self.resolve_command(name, scope, environment)
     }
 
     fn load_global(base: &std::path::Path) -> Result<Vec<PacsCommand>, PacsError> {
@@ -642,8 +649,8 @@ impl Pacs {
             name: project.name.clone(),
             path: project.path.clone(),
             commands: sorted,
-            contexts: project.contexts.clone(),
-            active_context: project.active_context.clone(),
+            environments: project.environments.clone(),
+            active_environment: project.active_environment.clone(),
         };
         fs::write(
             self.project_path(&project.name),
@@ -657,115 +664,131 @@ impl Pacs {
         self.save_project(project)
     }
 
-    /// Adds a new empty context to a project.
-    pub fn add_context(&mut self, project_name: &str, context_name: &str) -> Result<(), PacsError> {
+    /// Adds a new empty environment to a project.
+    pub fn add_environment(
+        &mut self,
+        project_name: &str,
+        environment_name: &str,
+    ) -> Result<(), PacsError> {
         {
             let project = self.get_project_mut(project_name)?;
-            if project.contexts.iter().any(|c| c.name == context_name) {
+            if project
+                .environments
+                .iter()
+                .any(|e| e.name == environment_name)
+            {
                 return Err(PacsError::ProjectExists(format!(
-                    "Context '{context_name}' already exists in project '{project_name}'"
+                    "Environment '{environment_name}' already exists in project '{project_name}'"
                 )));
             }
-            project.contexts.push(Context {
-                name: context_name.to_string(),
+            project.environments.push(Environment {
+                name: environment_name.to_string(),
                 values: std::collections::BTreeMap::new(),
             });
         }
         self.save_project_by_name(project_name)
     }
 
-    /// Removes an existing context from a project.
-    pub fn remove_context(
+    /// Removes an existing environment from a project.
+    pub fn remove_environment(
         &mut self,
         project_name: &str,
-        context_name: &str,
+        environment_name: &str,
     ) -> Result<(), PacsError> {
         {
             let project = self.get_project_mut(project_name)?;
-            if let Some(idx) = project.contexts.iter().position(|c| c.name == context_name) {
-                project.contexts.remove(idx);
-                // If the removed context was active, deactivate it.
-                if project.active_context.as_deref() == Some(context_name) {
-                    project.active_context = None;
+            if let Some(idx) = project
+                .environments
+                .iter()
+                .position(|e| e.name == environment_name)
+            {
+                project.environments.remove(idx);
+                // If the removed environment was active, deactivate it.
+                if project.active_environment.as_deref() == Some(environment_name) {
+                    project.active_environment = None;
                 }
             } else {
                 return Err(PacsError::ProjectNotFound(format!(
-                    "Context '{context_name}' not found in project '{project_name}'"
+                    "Environment '{environment_name}' not found in project '{project_name}'"
                 )));
             }
         }
         self.save_project_by_name(project_name)
     }
 
-    /// Replaces all key/value pairs in a project's context.
-    pub fn edit_context_values(
+    /// Replaces all key/value pairs in a project's environment.
+    pub fn edit_environment_values(
         &mut self,
         project_name: &str,
-        context_name: &str,
+        environment_name: &str,
         values: std::collections::BTreeMap<String, String>,
     ) -> Result<(), PacsError> {
         {
             let project = self.get_project_mut(project_name)?;
-            let ctx = project
-                .contexts
+            let env = project
+                .environments
                 .iter_mut()
-                .find(|c| c.name == context_name)
+                .find(|e| e.name == environment_name)
                 .ok_or_else(|| {
                     PacsError::ProjectNotFound(format!(
-                        "Context '{context_name}' not found in project '{project_name}'"
+                        "Environment '{environment_name}' not found in project '{project_name}'"
                     ))
                 })?;
-            ctx.values = values;
+            env.values = values;
         }
         self.save_project_by_name(project_name)
     }
 
-    /// Activates a specific context for a project.
-    pub fn activate_context(
+    /// Activates a specific environment for a project.
+    pub fn activate_environment(
         &mut self,
         project_name: &str,
-        context_name: &str,
+        environment_name: &str,
     ) -> Result<(), PacsError> {
         {
             let project = self.get_project_mut(project_name)?;
-            if !project.contexts.iter().any(|c| c.name == context_name) {
+            if !project
+                .environments
+                .iter()
+                .any(|e| e.name == environment_name)
+            {
                 return Err(PacsError::ProjectNotFound(format!(
-                    "Context '{context_name}' not found in project '{project_name}'"
+                    "Environment '{environment_name}' not found in project '{project_name}'"
                 )));
             }
-            project.active_context = Some(context_name.to_string());
+            project.active_environment = Some(environment_name.to_string());
         }
         self.save_project_by_name(project_name)
     }
 
-    /// Deactivates the active context for a project.
-    pub fn deactivate_context(&mut self, project_name: &str) -> Result<(), PacsError> {
+    /// Deactivates the active environment for a project.
+    pub fn deactivate_environment(&mut self, project_name: &str) -> Result<(), PacsError> {
         {
             let project = self.get_project_mut(project_name)?;
-            project.active_context = None;
+            project.active_environment = None;
         }
         self.save_project_by_name(project_name)
     }
 
-    /// Returns the currently active context name for a project, if any.
-    pub fn get_active_context(&self, project_name: &str) -> Result<Option<String>, PacsError> {
+    /// Returns the currently active environment name for a project, if any.
+    pub fn get_active_environment(&self, project_name: &str) -> Result<Option<String>, PacsError> {
         let project = self.get_project(project_name)?;
-        Ok(project.active_context.clone())
+        Ok(project.active_environment.clone())
     }
 
-    fn expand_command_with_context(
+    fn expand_command_with_environment(
         &self,
         cmd: &PacsCommand,
         project_name: &str,
-        context: Option<&str>,
+        environment: EnvironmentName<'_>,
     ) -> Result<PacsCommand, PacsError> {
         let project = self.get_project(project_name)?;
 
-        let ctx_values = context
-            .and_then(|name| project.contexts.iter().find(|c| c.name == name))
-            .map(|c| &c.values);
+        let env_values = environment
+            .and_then(|name| project.environments.iter().find(|e| e.name == name))
+            .map(|e| &e.values);
 
-        if ctx_values.is_none() {
+        if env_values.is_none() {
             return Ok(cmd.clone());
         }
 
@@ -787,7 +810,9 @@ impl Pacs {
 
             let key = &src[key_start..close];
 
-            if let Some(value) = ctx_values.and_then(|vals| vals.get(key)) {
+            if let Some(value) = env_values
+                .and_then(|vals: &std::collections::BTreeMap<String, String>| vals.get(key))
+            {
                 output.push_str(value);
             } else {
                 unresolved = true;
@@ -868,20 +893,20 @@ impl Pacs {
         tags
     }
 
-    /// Returns all context names for the active project or specified project.
+    /// Returns all environment names for the active project or specified project.
     #[must_use]
-    pub fn suggest_contexts(&self, project_name: Option<&str>) -> Vec<String> {
+    pub fn suggest_environments(&self, project_name: Option<&str>) -> Vec<String> {
         let project = if let Some(name) = project_name {
             self.get_project(name).ok()
         } else {
             self.get_active_project()
                 .ok()
                 .flatten()
-                .and_then(|name| self.get_project(&name).ok())
+                .and_then(|active| self.get_project(&active).ok())
         };
 
         project
-            .map(|p| p.contexts.iter().map(|c| c.name.clone()).collect())
+            .map(|p| p.environments.iter().map(|e| e.name.clone()).collect())
             .unwrap_or_default()
     }
 
