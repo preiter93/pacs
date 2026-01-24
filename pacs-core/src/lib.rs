@@ -469,7 +469,7 @@ impl Pacs {
     ) -> Result<Vec<PacsCommand>, PacsError> {
         match scope {
             Scope::Global => {
-                let mut cmds: Vec<PacsCommand> = self.global.iter().cloned().collect();
+                let mut cmds: Vec<PacsCommand> = self.global.clone();
                 cmds.sort_by(|a, b| a.name.cmp(&b.name));
                 Ok(cmds)
             }
@@ -479,7 +479,7 @@ impl Pacs {
 
                 if let Some(ctx_name) = context {
                     for c in &project.commands {
-                        let pc = self.expand_with_context(c, project, ctx_name)?;
+                        let pc = Pacs::expand_with_context(c, project, ctx_name);
                         cmds.push(pc);
                     }
                 } else {
@@ -632,8 +632,7 @@ impl Pacs {
             let project = self.get_project_mut(project_name)?;
             if project.contexts.iter().any(|c| c.name == context_name) {
                 return Err(PacsError::ProjectExists(format!(
-                    "Context '{}' already exists in project '{}'",
-                    context_name, project_name
+                    "Context '{context_name}' already exists in project '{project_name}'"
                 )));
             }
             project.contexts.push(Context {
@@ -660,8 +659,7 @@ impl Pacs {
                 }
             } else {
                 return Err(PacsError::ProjectNotFound(format!(
-                    "Context '{}' not found in project '{}'",
-                    context_name, project_name
+                    "Context '{context_name}' not found in project '{project_name}'"
                 )));
             }
         }
@@ -683,8 +681,7 @@ impl Pacs {
                 .find(|c| c.name == context_name)
                 .ok_or_else(|| {
                     PacsError::ProjectNotFound(format!(
-                        "Context '{}' not found in project '{}'",
-                        context_name, project_name
+                        "Context '{context_name}' not found in project '{project_name}'"
                     ))
                 })?;
             ctx.values = values;
@@ -702,8 +699,7 @@ impl Pacs {
             let project = self.get_project_mut(project_name)?;
             if !project.contexts.iter().any(|c| c.name == context_name) {
                 return Err(PacsError::ProjectNotFound(format!(
-                    "Context '{}' not found in project '{}'",
-                    context_name, project_name
+                    "Context '{context_name}' not found in project '{project_name}'"
                 )));
             }
             project.active_context = Some(context_name.to_string());
@@ -727,11 +723,10 @@ impl Pacs {
     }
 
     fn expand_with_context(
-        &self,
         cmd: &PacsCommand,
         project: &Project,
         context_name: &str,
-    ) -> Result<PacsCommand, PacsError> {
+    ) -> PacsCommand {
         let ctx_values = project
             .contexts
             .iter()
@@ -766,14 +761,14 @@ impl Pacs {
             out.push_str(&src[cursor..]);
 
             let command = if unresolved { cmd.command.clone() } else { out };
-            Ok(PacsCommand {
+            PacsCommand {
                 name: cmd.name.clone(),
                 command,
                 cwd: cmd.cwd.clone(),
                 tag: cmd.tag.clone(),
-            })
+            }
         } else {
-            Ok(cmd.clone())
+            cmd.clone()
         }
     }
 
@@ -819,14 +814,13 @@ impl Pacs {
 
             let key = &src[key_start..close];
 
-            match ctx_values.and_then(|vals| vals.get(key)) {
-                Some(value) => output.push_str(value),
-                None => {
-                    unresolved = true;
-                    output.push_str("{{");
-                    output.push_str(key);
-                    output.push_str("}}");
-                }
+            if let Some(value) = ctx_values.and_then(|vals| vals.get(key)) {
+                output.push_str(value);
+            } else {
+                unresolved = true;
+                output.push_str("{{");
+                output.push_str(key);
+                output.push_str("}}");
             }
 
             cursor = close + 2;
@@ -875,12 +869,11 @@ impl Pacs {
     }
 
     pub fn expand_command_auto(&self, name: &str) -> Result<PacsCommand, PacsError> {
-        if let Some(active) = self.get_active_project()? {
-            if let Ok(project) = self.get_project(&active) {
-                if let Some(cmd) = project.commands.iter().find(|c| c.name == name) {
-                    return self.expand_with_project_context(cmd, &active);
-                }
-            }
+        if let Some(active) = self.get_active_project()?
+            && let Ok(project) = self.get_project(&active)
+            && let Some(cmd) = project.commands.iter().find(|c| c.name == name)
+        {
+            return self.expand_with_project_context(cmd, &active);
         }
         if let Some(cmd) = self.global.iter().find(|c| c.name == name) {
             return Ok(cmd.clone());

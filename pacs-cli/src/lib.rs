@@ -3,6 +3,7 @@
 #![allow(clippy::too_many_lines)]
 use std::collections::BTreeMap;
 use std::env;
+use std::fmt::Write;
 use std::fs;
 use std::process::Command;
 
@@ -768,19 +769,33 @@ pub fn run(cli: Cli) -> Result<()> {
                     .projects
                     .iter()
                     .find(|p| p.name.eq_ignore_ascii_case(&project))
-                    .with_context(|| format!("Project '{}' not found", project))?;
+                    .with_context(|| format!("Project '{project}' not found"))?;
+
+                #[derive(serde::Deserialize)]
+                #[allow(clippy::items_after_statements)]
+                struct EditDoc {
+                    #[serde(default)]
+                    active_context: Option<String>,
+                    #[serde(default)]
+                    contexts: std::collections::BTreeMap<String, CtxValues>,
+                }
+                #[derive(serde::Deserialize)]
+                struct CtxValues {
+                    #[serde(default)]
+                    values: BTreeMap<String, String>,
+                }
 
                 let mut buf = String::new();
                 if let Some(active_ctx) = &project_ref.active_context {
-                    buf.push_str(&format!("active_context = \"{}\"\n\n", active_ctx));
+                    write!(buf, "active_context = \"{active_ctx}\"\n\n").unwrap();
                 }
 
                 for ctx in &project_ref.contexts {
-                    buf.push_str(&format!("[contexts.{}.values]\n", ctx.name));
+                    writeln!(buf, "[contexts.{}.values]", ctx.name).unwrap();
                     for (k, v) in &ctx.values {
-                        buf.push_str(&format!("{} = \"{}\"\n", k, v.replace('"', "\\\"")));
+                        writeln!(buf, "{k} = \"{}\"", v.replace('"', "\\\"")).unwrap();
                     }
-                    buf.push_str("\n");
+                    buf.push('\n');
                 }
 
                 let temp_file =
@@ -800,27 +815,12 @@ pub fn run(cli: Cli) -> Result<()> {
                 let edited = fs::read_to_string(&temp_file)?;
                 fs::remove_file(&temp_file).ok();
 
-                #[derive(serde::Deserialize)]
-                struct EditDoc {
-                    #[serde(default)]
-                    active_context: Option<String>,
-                    #[serde(default)]
-                    contexts: std::collections::BTreeMap<String, CtxValues>,
-                }
-                #[derive(serde::Deserialize)]
-                struct CtxValues {
-                    #[serde(default)]
-                    values: BTreeMap<String, String>,
-                }
-
                 let doc: EditDoc =
                     toml::from_str(&edited).with_context(|| "Failed to parse edited TOML")?;
 
                 if let Some(active_name) = doc.active_context {
                     pacs.activate_context(&project, &active_name)
-                        .with_context(|| {
-                            format!("Failed to set active context '{}'", active_name)
-                        })?;
+                        .with_context(|| format!("Failed to set active context '{active_name}'"))?;
                 }
 
                 // Update all contexts from the file
@@ -828,12 +828,11 @@ pub fn run(cli: Cli) -> Result<()> {
                     pacs.edit_context_values(&project, &ctx_name, ctx_values.values.clone())
                         .with_context(|| {
                             format!(
-                                "Failed to update context '{}' values for project '{}'",
-                                ctx_name, project
+                                "Failed to update context '{ctx_name}' values for project '{project}'"
                             )
                         })?;
                 }
-                println!("All contexts updated for project '{}'.", project);
+                println!("All contexts updated for project '{project}'.");
             }
             ContextCommands::List(args) => {
                 // Resolve project: use provided or active
@@ -848,7 +847,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     .projects
                     .iter()
                     .find(|p| p.name.eq_ignore_ascii_case(&project_name))
-                    .with_context(|| format!("Project '{}' not found", project_name))?;
+                    .with_context(|| format!("Project '{project_name}' not found"))?;
                 let active = project.active_context.as_ref();
                 if project.contexts.is_empty() {
                     println!("No contexts.");
