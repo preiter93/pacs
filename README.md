@@ -84,3 +84,11 @@ source <(COMPLETE=bash pacs)
 ```sh
 source (COMPLETE=fish pacs | psub)
 ```
+
+## Why PACS?
+
+Why PACS? Why not just use another command runner like `make` or `just`? I use PACS more like a vault than a sophisticated runner. Over time, I’ve accumulated commands that I need every now and then; commands that don’t quite make it into the official scripts, makefiles or justfiles of my projects.  
+
+Even more so when collaborating with others, I don't want to dump all those commands into the repo. But usually the day comes when I have to deploy a busybox or a postgres database in a kubernetes cluster but the docker command is just too difficult for me to remember. Then I find myself scouring through my terminal history to search for it, hoping its still not pushed off the cliff of my history limit...  
+
+I wished I could have all those commands sorted and lying around, ready for the day I need them. That’s why I created PACS. And to be honest, it was also an excuse to write more Rust and to create a new TUI, but that’s still to come.
