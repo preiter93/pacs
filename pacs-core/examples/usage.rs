@@ -40,7 +40,7 @@ fn main() -> Result<(), PacsError> {
 
     // List all project commands
     println!("[COMMANDS]");
-    for cmd in pacs.list_commands(Scope::Project("example"))? {
+    for cmd in pacs.list_commands(Scope::Project("example"), None)? {
         println!("- {} [{}]", cmd.name, cmd.tag);
     }
 

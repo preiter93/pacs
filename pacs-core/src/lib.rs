@@ -37,6 +37,9 @@ pub enum PacsError {
     #[error("Command execution failed with status: {0}")]
     CommandFailed(i32),
 
+    #[error("Unresolved placeholders: {0}")]
+    UnresolvedPlaceholders(String),
+
     #[error("Could not determine home directory")]
     HomeDirUnavailable,
 
@@ -109,6 +112,16 @@ impl PacsCommand {
     }
 }
 
+/// Context values for a named project context.
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct Context {
+    /// Context identifier (e.g., "dev", "stg").
+    pub name: String,
+    /// Key-value pairs used to render placeholders like `{key}`.
+    #[serde(default)]
+    pub values: std::collections::BTreeMap<String, String>,
+}
+
 /// A collection of commands associated with a project.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Project {
@@ -119,6 +132,12 @@ pub struct Project {
     /// Commands belonging to this project.
     #[serde(default)]
     pub commands: Vec<PacsCommand>,
+    /// Contexts defined for this project.
+    #[serde(default)]
+    pub contexts: Vec<Context>,
+    /// The active context name used to render placeholders for this project.
+    #[serde(default)]
+    pub active_context: Option<String>,
 }
 
 /// Wrapper for global commands to enable proper TOML serialization.
@@ -237,6 +256,8 @@ impl Pacs {
             name: name.to_string(),
             path,
             commands: Vec::new(),
+            contexts: Vec::new(),
+            active_context: None,
         };
 
         self.save_project(&project)?;
@@ -440,19 +461,43 @@ impl Pacs {
     }
 
     /// Returns all commands in the specified scope.
-    pub fn list_commands(&self, scope: Scope<'_>) -> Result<Vec<&PacsCommand>, PacsError> {
-        let mut cmds: Vec<&PacsCommand> = match scope {
-            Scope::Global => self.global.iter().collect(),
-            Scope::Project(name) => self.get_project(name)?.commands.iter().collect(),
-        };
-        cmds.sort_by(|a, b| a.name.cmp(&b.name));
-        Ok(cmds)
+    /// For project scope, when a specific context is provided, commands are expanded using it.
+    pub fn list_commands(
+        &self,
+        scope: Scope<'_>,
+        context: Option<&str>,
+    ) -> Result<Vec<PacsCommand>, PacsError> {
+        match scope {
+            Scope::Global => {
+                let mut cmds: Vec<PacsCommand> = self.global.iter().cloned().collect();
+                cmds.sort_by(|a, b| a.name.cmp(&b.name));
+                Ok(cmds)
+            }
+            Scope::Project(project_name) => {
+                let project = self.get_project(project_name)?;
+                let mut cmds: Vec<PacsCommand> = Vec::with_capacity(project.commands.len());
+
+                if let Some(ctx_name) = context {
+                    for c in &project.commands {
+                        let pc = self.expand_with_context(c, project, ctx_name)?;
+                        cmds.push(pc);
+                    }
+                } else {
+                    for c in &project.commands {
+                        cmds.push(self.expand_with_project_context(c, project_name)?);
+                    }
+                }
+
+                cmds.sort_by(|a, b| a.name.cmp(&b.name));
+                Ok(cmds)
+            }
+        }
     }
 
     /// Returns commands filtered by tag.
-    pub fn list_by_tag(&self, scope: Scope<'_>, tag: &str) -> Result<Vec<&PacsCommand>, PacsError> {
+    pub fn list_by_tag(&self, scope: Scope<'_>, tag: &str) -> Result<Vec<PacsCommand>, PacsError> {
         Ok(self
-            .list_commands(scope)?
+            .list_commands(scope, None)?
             .into_iter()
             .filter(|c| c.tag == tag)
             .collect())
@@ -461,7 +506,13 @@ impl Pacs {
     /// Runs a command, but refuses to run dangerous commands.
     pub fn run(&self, name: &str, scope: Scope<'_>) -> Result<(), PacsError> {
         let cmd = self.get_command(name, scope)?;
-        Self::execute(cmd)
+        match scope {
+            Scope::Global => Self::execute(cmd),
+            Scope::Project(project_name) => {
+                let rendered = self.expand_with_project_context(cmd, project_name)?;
+                Self::execute(&rendered)
+            }
+        }
     }
 
     /// Runs a command by name, automatically finding which scope it belongs to.
@@ -471,13 +522,12 @@ impl Pacs {
             && let Ok(project) = self.get_project(&active)
             && let Some(cmd) = project.commands.iter().find(|c| c.name == name)
         {
-            return Self::execute(cmd);
+            let rendered = self.expand_with_project_context(cmd, &active)?;
+            return Self::execute(&rendered);
         }
-
         if let Some(cmd) = self.global.iter().find(|c| c.name == name) {
             return Self::execute(cmd);
         }
-
         Err(PacsError::CommandNotFound(name.to_string()))
     }
 
@@ -561,6 +611,8 @@ impl Pacs {
             name: project.name.clone(),
             path: project.path.clone(),
             commands: sorted,
+            contexts: project.contexts.clone(),
+            active_context: project.active_context.clone(),
         };
         fs::write(
             self.project_path(&project.name),
@@ -569,8 +621,234 @@ impl Pacs {
         Ok(())
     }
 
-    fn save_project_by_name(&self, name: &str) -> Result<(), PacsError> {
-        self.save_project(self.get_project(name)?)
+    pub fn save_project_by_name(&self, name: &str) -> Result<(), PacsError> {
+        let project = self.get_project(name)?;
+        self.save_project(project)
+    }
+
+    /// Adds a new empty context to a project.
+    pub fn add_context(&mut self, project_name: &str, context_name: &str) -> Result<(), PacsError> {
+        {
+            let project = self.get_project_mut(project_name)?;
+            if project.contexts.iter().any(|c| c.name == context_name) {
+                return Err(PacsError::ProjectExists(format!(
+                    "Context '{}' already exists in project '{}'",
+                    context_name, project_name
+                )));
+            }
+            project.contexts.push(Context {
+                name: context_name.to_string(),
+                values: std::collections::BTreeMap::new(),
+            });
+        }
+        self.save_project_by_name(project_name)
+    }
+
+    /// Removes an existing context from a project.
+    pub fn remove_context(
+        &mut self,
+        project_name: &str,
+        context_name: &str,
+    ) -> Result<(), PacsError> {
+        {
+            let project = self.get_project_mut(project_name)?;
+            if let Some(idx) = project.contexts.iter().position(|c| c.name == context_name) {
+                project.contexts.remove(idx);
+                // If the removed context was active, deactivate it.
+                if project.active_context.as_deref() == Some(context_name) {
+                    project.active_context = None;
+                }
+            } else {
+                return Err(PacsError::ProjectNotFound(format!(
+                    "Context '{}' not found in project '{}'",
+                    context_name, project_name
+                )));
+            }
+        }
+        self.save_project_by_name(project_name)
+    }
+
+    /// Replaces all key/value pairs in a project's context.
+    pub fn edit_context_values(
+        &mut self,
+        project_name: &str,
+        context_name: &str,
+        values: std::collections::BTreeMap<String, String>,
+    ) -> Result<(), PacsError> {
+        {
+            let project = self.get_project_mut(project_name)?;
+            let ctx = project
+                .contexts
+                .iter_mut()
+                .find(|c| c.name == context_name)
+                .ok_or_else(|| {
+                    PacsError::ProjectNotFound(format!(
+                        "Context '{}' not found in project '{}'",
+                        context_name, project_name
+                    ))
+                })?;
+            ctx.values = values;
+        }
+        self.save_project_by_name(project_name)
+    }
+
+    /// Activates a specific context for a project.
+    pub fn activate_context(
+        &mut self,
+        project_name: &str,
+        context_name: &str,
+    ) -> Result<(), PacsError> {
+        {
+            let project = self.get_project_mut(project_name)?;
+            if !project.contexts.iter().any(|c| c.name == context_name) {
+                return Err(PacsError::ProjectNotFound(format!(
+                    "Context '{}' not found in project '{}'",
+                    context_name, project_name
+                )));
+            }
+            project.active_context = Some(context_name.to_string());
+        }
+        self.save_project_by_name(project_name)
+    }
+
+    /// Deactivates the active context for a project.
+    pub fn deactivate_context(&mut self, project_name: &str) -> Result<(), PacsError> {
+        {
+            let project = self.get_project_mut(project_name)?;
+            project.active_context = None;
+        }
+        self.save_project_by_name(project_name)
+    }
+
+    /// Returns the currently active context name for a project, if any.
+    pub fn get_active_context(&self, project_name: &str) -> Result<Option<String>, PacsError> {
+        let project = self.get_project(project_name)?;
+        Ok(project.active_context.clone())
+    }
+
+    fn expand_with_context(
+        &self,
+        cmd: &PacsCommand,
+        project: &Project,
+        context_name: &str,
+    ) -> Result<PacsCommand, PacsError> {
+        let ctx_values = project
+            .contexts
+            .iter()
+            .find(|c| c.name.eq_ignore_ascii_case(context_name))
+            .map(|c| &c.values);
+
+        if let Some(vals) = ctx_values {
+            let src = &cmd.command;
+            let mut out = String::with_capacity(src.len());
+            let mut cursor = 0;
+            let mut unresolved = false;
+
+            while let Some(open_rel) = src[cursor..].find("{{").map(|i| cursor + i) {
+                out.push_str(&src[cursor..open_rel]);
+                let key_start = open_rel + 2;
+                let Some(close_abs) = src[key_start..].find("}}").map(|i| key_start + i) else {
+                    out.push_str(&src[open_rel..]);
+                    cursor = src.len();
+                    break;
+                };
+                let key = &src[key_start..close_abs];
+                if let Some(val) = vals.get(key) {
+                    out.push_str(val);
+                } else {
+                    unresolved = true;
+                    out.push_str("{{");
+                    out.push_str(key);
+                    out.push_str("}}");
+                }
+                cursor = close_abs + 2;
+            }
+            out.push_str(&src[cursor..]);
+
+            let command = if unresolved { cmd.command.clone() } else { out };
+            Ok(PacsCommand {
+                name: cmd.name.clone(),
+                command,
+                cwd: cmd.cwd.clone(),
+                tag: cmd.tag.clone(),
+            })
+        } else {
+            Ok(cmd.clone())
+        }
+    }
+
+    /// Helper to  expand placeholders {{key}}.
+    fn expand_with_project_context(
+        &self,
+        cmd: &PacsCommand,
+        project_name: &str,
+    ) -> Result<PacsCommand, PacsError> {
+        let project = self.get_project(project_name)?;
+
+        let active_ctx_name = project.active_context.as_deref();
+        let ctx_values = active_ctx_name
+            .and_then(|name| project.contexts.iter().find(|c| c.name == name))
+            .map(|c| &c.values);
+
+        // No active context: return raw command unchanged
+        if ctx_values.is_none() {
+            return Ok(PacsCommand {
+                name: cmd.name.clone(),
+                command: cmd.command.clone(),
+                cwd: cmd.cwd.clone(),
+                tag: cmd.tag.clone(),
+            });
+        }
+
+        let mut unresolved = false;
+        let mut output = String::with_capacity(cmd.command.len());
+
+        let mut cursor = 0;
+        let src = &cmd.command;
+
+        while let Some(open) = src[cursor..].find("{{").map(|i| cursor + i) {
+            output.push_str(&src[cursor..open]);
+
+            let key_start = open + 2;
+            let Some(close) = src[key_start..].find("}}").map(|i| key_start + i) else {
+                // unmatched opening, copy rest verbatim
+                output.push_str(&src[open..]);
+                cursor = src.len();
+                break;
+            };
+
+            let key = &src[key_start..close];
+
+            match ctx_values.and_then(|vals| vals.get(key)) {
+                Some(value) => output.push_str(value),
+                None => {
+                    unresolved = true;
+                    output.push_str("{{");
+                    output.push_str(key);
+                    output.push_str("}}");
+                }
+            }
+
+            cursor = close + 2;
+        }
+
+        output.push_str(&src[cursor..]);
+
+        if unresolved {
+            return Ok(PacsCommand {
+                name: cmd.name.clone(),
+                command: cmd.command.clone(),
+                cwd: cmd.cwd.clone(),
+                tag: cmd.tag.clone(),
+            });
+        }
+
+        Ok(PacsCommand {
+            name: cmd.name.clone(),
+            command: output,
+            cwd: cmd.cwd.clone(),
+            tag: cmd.tag.clone(),
+        })
     }
 
     fn execute(cmd: &PacsCommand) -> Result<(), PacsError> {
@@ -594,6 +872,20 @@ impl Pacs {
         } else {
             Err(PacsError::CommandFailed(status.code().unwrap_or(-1)))
         }
+    }
+
+    pub fn expand_command_auto(&self, name: &str) -> Result<PacsCommand, PacsError> {
+        if let Some(active) = self.get_active_project()? {
+            if let Ok(project) = self.get_project(&active) {
+                if let Some(cmd) = project.commands.iter().find(|c| c.name == name) {
+                    return self.expand_with_project_context(cmd, &active);
+                }
+            }
+        }
+        if let Some(cmd) = self.global.iter().find(|c| c.name == name) {
+            return Ok(cmd.clone());
+        }
+        Err(PacsError::CommandNotFound(name.to_string()))
     }
 
     /// Returns command names from global and active project for shell completion.
@@ -684,13 +976,13 @@ mod tests {
         )
         .unwrap();
 
-        let cmds = pacs.list_commands(Scope::Project("test")).unwrap();
+        let cmds = pacs.list_commands(Scope::Project("test"), None).unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(cmds[0].name, "hello");
 
         pacs.delete_command("hello", Scope::Project("test"))
             .unwrap();
-        let cmds = pacs.list_commands(Scope::Project("test")).unwrap();
+        let cmds = pacs.list_commands(Scope::Project("test"), None).unwrap();
         assert!(cmds.is_empty());
 
         pacs.delete_project("test").unwrap();
@@ -817,8 +1109,8 @@ mod tests {
         .unwrap();
 
         // Verify both exist
-        let cmds1 = pacs.list_commands(Scope::Project("proj1")).unwrap();
-        let cmds2 = pacs.list_commands(Scope::Project("proj2")).unwrap();
+        let cmds1 = pacs.list_commands(Scope::Project("proj1"), None).unwrap();
+        let cmds2 = pacs.list_commands(Scope::Project("proj2"), None).unwrap();
         assert_eq!(cmds1.len(), 1);
         assert_eq!(cmds2.len(), 1);
         assert_eq!(cmds1[0].command, "echo proj1");
@@ -858,14 +1150,14 @@ mod tests {
         // delete_command_auto should find cmd1 in active project
         pacs.delete_command_auto("cmd1").unwrap();
         assert!(
-            pacs.list_commands(Scope::Project("active_proj"))
+            pacs.list_commands(Scope::Project("active_proj"), None)
                 .unwrap()
                 .is_empty()
         );
 
         // delete_command_auto should find cmd2 in global
         pacs.delete_command_auto("cmd2").unwrap();
-        assert!(pacs.list_commands(Scope::Global).unwrap().is_empty());
+        assert!(pacs.list_commands(Scope::Global, None).unwrap().is_empty());
 
         // Deleting non-existent command should fail
         let result = pacs.delete_command_auto("nonexistent");

@@ -64,9 +64,17 @@ pub enum Commands {
     Search(SearchArgs),
 
     /// Manage projects
+    #[command(visible_alias = "p")]
     Project {
         #[command(subcommand)]
         command: ProjectCommands,
+    },
+
+    /// Manage project-specific contexts
+    #[command(visible_alias = "c")]
+    Context {
+        #[command(subcommand)]
+        command: ContextCommands,
     },
 }
 
@@ -93,6 +101,29 @@ pub enum ProjectCommands {
     Active,
 }
 
+#[derive(Subcommand, Debug)]
+pub enum ContextCommands {
+    /// Add a new empty context to a project
+    Add(ContextAddArgs),
+
+    /// Remove a context from a project
+    #[command(visible_alias = "rm")]
+    Remove(ContextRemoveArgs),
+
+    /// Edit a context's values (opens editor)
+    Edit(ContextEditArgs),
+
+    /// List contexts for a project
+    #[command(visible_alias = "ls")]
+    List(ContextListArgs),
+
+    /// Activates a context
+    Activate(ContextActivateArgs),
+
+    /// Show the active context for a project
+    Active(ContextActiveArgs),
+}
+
 #[derive(Args, Debug)]
 pub struct ProjectAddArgs {
     /// Name of the project
@@ -115,6 +146,64 @@ pub struct ProjectActivateArgs {
     /// Name of the project to activate
     #[arg(add = ArgValueCandidates::new(complete_projects))]
     pub name: String,
+}
+
+#[derive(Args, Debug)]
+pub struct ContextAddArgs {
+    /// Context name to add (e.g., dev, stg)
+    pub name: String,
+
+    /// Target project (defaults to active project if omitted)
+    #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
+    pub project: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct ContextRemoveArgs {
+    /// Context name to remove
+    pub name: String,
+
+    /// Target project (defaults to active project if omitted)
+    #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
+    pub project: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct ContextEditArgs {
+    /// Target project (defaults to active project if omitted)
+    #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
+    pub project: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct ContextListArgs {
+    /// Target project (defaults to active project if omitted)
+    #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
+    pub project: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct ContextActivateArgs {
+    /// Context name to activate
+    pub name: String,
+
+    /// Target project (defaults to active project if omitted)
+    #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
+    pub project: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct ContextDeactivateArgs {
+    /// Target project (defaults to active project if omitted)
+    #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
+    pub project: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct ContextActiveArgs {
+    /// Target project (defaults to active project if omitted)
+    #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
+    pub project: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -147,6 +236,10 @@ pub struct CopyArgs {
     /// Name of the command to copy
     #[arg(add = ArgValueCandidates::new(complete_commands))]
     pub name: String,
+
+    /// Use a specific context for expansion before copying
+    #[arg(short = 'c', long = "context")]
+    pub context: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -197,6 +290,10 @@ pub struct ListArgs {
     #[arg(short, long, add = ArgValueCandidates::new(complete_tags))]
     pub tag: Option<String>,
 
+    /// Show commands resolved for a specific context (project scope)
+    #[arg(short = 'c', long = "context")]
+    pub context: Option<String>,
+
     /// Show only command names (no bodies)
     #[arg(short, long)]
     pub names: bool,
@@ -211,6 +308,10 @@ pub struct RunArgs {
     /// Run from a specific project instead of global
     #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
     pub project: Option<String>,
+
+    /// Use a specific context for this run
+    #[arg(short = 'c', long = "context")]
+    pub context: Option<String>,
 }
 
 fn complete_commands() -> Vec<CompletionCandidate> {
@@ -256,8 +357,9 @@ pub fn run(cli: Cli) -> Result<()> {
                 cmd
             } else {
                 let editor = env::var("VISUAL")
-                    .or_else(|_| env::var("EDITOR"))
-                    .unwrap_or_else(|_| "vi".to_string());
+                    .ok()
+                    .or_else(|| env::var("EDITOR").ok())
+                    .unwrap_or_else(|| "vi".to_string());
 
                 let temp_file =
                     std::env::temp_dir().join(format!("pacs-{}.sh", std::process::id()));
@@ -325,8 +427,9 @@ pub fn run(cli: Cli) -> Result<()> {
                 .with_context(|| format!("Command '{}' not found", args.name))?;
 
             let editor = env::var("VISUAL")
-                .or_else(|_| env::var("EDITOR"))
-                .unwrap_or_else(|_| "vi".to_string());
+                .ok()
+                .or_else(|| env::var("EDITOR").ok())
+                .unwrap_or_else(|| "vi".to_string());
 
             let temp_file =
                 std::env::temp_dir().join(format!("pacs-edit-{}.sh", std::process::id()));
@@ -395,7 +498,7 @@ pub fn run(cli: Cli) -> Result<()> {
             let filter_tag =
                 |cmd: &PacsCommand| -> bool { args.tag.as_ref().is_none_or(|t| &cmd.tag == t) };
 
-            let print_tagged = |commands: &[&PacsCommand], scope_name: &str| {
+            let print_tagged = |commands: &[PacsCommand], scope_name: &str| {
                 if commands.is_empty() {
                     return;
                 }
@@ -441,21 +544,26 @@ pub fn run(cli: Cli) -> Result<()> {
             };
 
             if let Some(ref project) = args.project {
-                let commands = pacs.list_commands(Scope::Project(project))?;
+                let commands =
+                    pacs.list_commands(Scope::Project(project), args.context.as_deref())?;
                 print_tagged(&commands, project);
             } else if args.global {
-                let commands = pacs.list_commands(Scope::Global)?;
+                let commands = pacs.list_commands(Scope::Global, None)?;
                 print_tagged(&commands, "Global");
             } else {
-                let commands = pacs.list_commands(Scope::Global)?;
+                let commands = pacs.list_commands(Scope::Global, None)?;
                 print_tagged(&commands, "Global");
 
                 if let Some(active_project) = pacs.get_active_project()? {
-                    let commands = pacs.list_commands(Scope::Project(&active_project))?;
+                    let commands = pacs
+                        .list_commands(Scope::Project(&active_project), args.context.as_deref())?;
                     print_tagged(&commands, &active_project);
                 } else {
                     for project in &pacs.projects {
-                        let commands = pacs.list_commands(Scope::Project(&project.name))?;
+                        let commands = pacs.list_commands(
+                            Scope::Project(&project.name),
+                            args.context.as_deref(),
+                        )?;
                         print_tagged(&commands, &project.name);
                     }
                 }
@@ -463,19 +571,78 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Run(args) => {
-            if let Some(ref project) = args.project {
-                pacs.run(&args.name, Scope::Project(project))
-                    .with_context(|| format!("Failed to run command '{}'", args.name))?;
-            } else {
-                pacs.run_auto(&args.name)
-                    .with_context(|| format!("Failed to run command '{}'", args.name))?;
+            // If a context is provided, temporarily switch context for the target project
+            match (&args.project, &args.context) {
+                (Some(project), Some(ctx)) => {
+                    let prev_ctx = pacs.get_active_context(project).ok().flatten();
+                    pacs.activate_context(project, ctx).ok();
+                    let result = pacs.run(&args.name, Scope::Project(project));
+                    match prev_ctx {
+                        Some(prev) => {
+                            pacs.activate_context(project, &prev).ok();
+                        }
+                        None => {
+                            pacs.deactivate_context(project).ok();
+                        }
+                    }
+                    result.with_context(|| format!("Failed to run command '{}'", args.name))?;
+                }
+                (Some(project), None) => {
+                    pacs.run(&args.name, Scope::Project(project))
+                        .with_context(|| format!("Failed to run command '{}'", args.name))?;
+                }
+                (None, Some(ctx)) => {
+                    // Use active project with specified context if available
+                    if let Some(active_project) = pacs.get_active_project()? {
+                        let prev_ctx = pacs.get_active_context(&active_project).ok().flatten();
+                        pacs.activate_context(&active_project, ctx).ok();
+                        let result = pacs.run(&args.name, Scope::Project(&active_project));
+                        match prev_ctx {
+                            Some(prev) => {
+                                pacs.activate_context(&active_project, &prev).ok();
+                            }
+                            None => {
+                                pacs.deactivate_context(&active_project).ok();
+                            }
+                        }
+                        result.with_context(|| format!("Failed to run command '{}'", args.name))?;
+                    } else {
+                        anyhow::bail!("No active project. Use '--project' with '--context'.");
+                    }
+                }
+                (None, None) => {
+                    pacs.run_auto(&args.name)
+                        .with_context(|| format!("Failed to run command '{}'", args.name))?;
+                }
             }
         }
 
         Commands::Copy(args) => {
-            let cmd = pacs
-                .get_command_auto(&args.name)
-                .with_context(|| format!("Command '{}' not found", args.name))?;
+            let cmd = match (&args.context, pacs.get_active_project()?) {
+                (Some(ctx), Some(active_project)) => {
+                    // Temporarily switch context to expand, then restore
+                    let prev_ctx = pacs.get_active_context(&active_project).ok().flatten();
+                    pacs.activate_context(&active_project, ctx).ok();
+                    let expanded = pacs
+                        .expand_command_auto(&args.name)
+                        .with_context(|| format!("Command '{}' not found", args.name));
+                    match prev_ctx {
+                        Some(prev) => {
+                            pacs.activate_context(&active_project, &prev).ok();
+                        }
+                        None => {
+                            pacs.deactivate_context(&active_project).ok();
+                        }
+                    }
+                    expanded?
+                }
+                (Some(_), None) => {
+                    anyhow::bail!("No active project. Use '--project' with '--context'.");
+                }
+                (None, _) => pacs
+                    .expand_command_auto(&args.name)
+                    .with_context(|| format!("Command '{}' not found", args.name))?,
+            };
             arboard::Clipboard::new()
                 .and_then(|mut cb| cb.set_text(cmd.command.trim()))
                 .map_err(|e| anyhow::anyhow!("Failed to copy to clipboard: {e}"))?;
@@ -542,6 +709,196 @@ pub fn run(cli: Cli) -> Result<()> {
                     println!("{active}");
                 } else {
                     println!("No active project.");
+                }
+            }
+        },
+        Commands::Context { command } => match command {
+            ContextCommands::Add(args) => {
+                let project = if let Some(p) = args.project.clone() {
+                    p
+                } else if let Some(active) = pacs.get_active_project().ok().flatten() {
+                    active
+                } else {
+                    anyhow::bail!("No project specified and no active project set");
+                };
+                pacs.add_context(&project, &args.name).with_context(|| {
+                    format!(
+                        "Failed to add context '{}' to project '{}'",
+                        args.name, project
+                    )
+                })?;
+                println!("Context '{}' added to project '{}'.", args.name, project);
+            }
+            ContextCommands::Remove(args) => {
+                let project = if let Some(p) = args.project.clone() {
+                    p
+                } else if let Some(active) = pacs.get_active_project()? {
+                    active
+                } else {
+                    anyhow::bail!("No project specified and no active project set");
+                };
+                pacs.remove_context(&project, &args.name).with_context(|| {
+                    format!(
+                        "Failed to remove context '{}' from project '{}'",
+                        args.name, project
+                    )
+                })?;
+                println!(
+                    "Context '{}' removed from project '{}'.",
+                    args.name, project
+                );
+            }
+            ContextCommands::Edit(args) => {
+                let editor = env::var("VISUAL")
+                    .ok()
+                    .or_else(|| env::var("EDITOR").ok())
+                    .unwrap_or_else(|| "vi".to_string());
+
+                // Resolve target project
+                let project = if let Some(p) = args.project.clone() {
+                    p
+                } else if let Some(active) = pacs.get_active_project()? {
+                    active
+                } else {
+                    anyhow::bail!("No project specified and no active project set");
+                };
+
+                // Build TOML with existing contexts and values
+                let project_ref = pacs
+                    .projects
+                    .iter()
+                    .find(|p| p.name.eq_ignore_ascii_case(&project))
+                    .with_context(|| format!("Project '{}' not found", project))?;
+
+                let mut buf = String::new();
+                if let Some(active_ctx) = &project_ref.active_context {
+                    buf.push_str(&format!("active_context = \"{}\"\n\n", active_ctx));
+                }
+
+                for ctx in &project_ref.contexts {
+                    buf.push_str(&format!("[contexts.{}.values]\n", ctx.name));
+                    for (k, v) in &ctx.values {
+                        buf.push_str(&format!("{} = \"{}\"\n", k, v.replace('"', "\\\"")));
+                    }
+                    buf.push_str("\n");
+                }
+
+                let temp_file =
+                    std::env::temp_dir().join(format!("pacs-ctx-{}.toml", std::process::id()));
+                fs::write(&temp_file, buf)?;
+
+                let status = Command::new(&editor)
+                    .arg(&temp_file)
+                    .status()
+                    .with_context(|| format!("Failed to open editor '{editor}'"))?;
+
+                if !status.success() {
+                    fs::remove_file(&temp_file).ok();
+                    anyhow::bail!("Editor exited with non-zero status");
+                }
+
+                let edited = fs::read_to_string(&temp_file)?;
+                fs::remove_file(&temp_file).ok();
+
+                #[derive(serde::Deserialize)]
+                struct EditDoc {
+                    #[serde(default)]
+                    active_context: Option<String>,
+                    #[serde(default)]
+                    contexts: std::collections::BTreeMap<String, CtxValues>,
+                }
+                #[derive(serde::Deserialize)]
+                struct CtxValues {
+                    #[serde(default)]
+                    values: BTreeMap<String, String>,
+                }
+
+                let doc: EditDoc =
+                    toml::from_str(&edited).with_context(|| "Failed to parse edited TOML")?;
+
+                if let Some(active_name) = doc.active_context {
+                    pacs.activate_context(&project, &active_name)
+                        .with_context(|| {
+                            format!("Failed to set active context '{}'", active_name)
+                        })?;
+                }
+
+                // Update all contexts from the file
+                for (ctx_name, ctx_values) in doc.contexts {
+                    pacs.edit_context_values(&project, &ctx_name, ctx_values.values.clone())
+                        .with_context(|| {
+                            format!(
+                                "Failed to update context '{}' values for project '{}'",
+                                ctx_name, project
+                            )
+                        })?;
+                }
+                println!("All contexts updated for project '{}'.", project);
+            }
+            ContextCommands::List(args) => {
+                // Resolve project: use provided or active
+                let project_name = if let Some(p) = args.project.clone() {
+                    p
+                } else if let Some(active) = pacs.get_active_project()? {
+                    active
+                } else {
+                    anyhow::bail!("No project specified and no active project set");
+                };
+                let project = pacs
+                    .projects
+                    .iter()
+                    .find(|p| p.name.eq_ignore_ascii_case(&project_name))
+                    .with_context(|| format!("Project '{}' not found", project_name))?;
+                let active = project.active_context.as_ref();
+                if project.contexts.is_empty() {
+                    println!("No contexts.");
+                } else {
+                    for ctx in &project.contexts {
+                        let active_marker = if Some(&ctx.name) == active {
+                            format!(" {GREEN}*{RESET}")
+                        } else {
+                            String::new()
+                        };
+                        println!("{}{}{}{}", BLUE, ctx.name, RESET, active_marker);
+                        if !ctx.values.is_empty() {
+                            for (k, v) in &ctx.values {
+                                println!("  {GREY}{k}:{RESET} {v}");
+                            }
+                        }
+                    }
+                }
+            }
+            ContextCommands::Activate(args) => {
+                let project = if let Some(p) = args.project.clone() {
+                    p
+                } else if let Some(active) = pacs.get_active_project()? {
+                    active
+                } else {
+                    anyhow::bail!("No project specified and no active project set");
+                };
+                pacs.activate_context(&project, &args.name)
+                    .with_context(|| {
+                        format!(
+                            "Failed to activate context '{}' for project '{}'",
+                            args.name, project
+                        )
+                    })?;
+                println!(
+                    "Context '{}' activated for project '{}'.",
+                    args.name, project
+                );
+            }
+            ContextCommands::Active(args) => {
+                let project = if let Some(p) = args.project.clone() {
+                    p
+                } else if let Some(active) = pacs.get_active_project()? {
+                    active
+                } else {
+                    anyhow::bail!("No project specified and no active project set");
+                };
+                match pacs.get_active_context(&project)? {
+                    Some(name) => println!("{name}"),
+                    None => println!("No active context."),
                 }
             }
         },
