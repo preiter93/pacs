@@ -507,6 +507,7 @@ pub fn run(cli: Cli) -> Result<()> {
 
             let print_tagged = |commands: &[PacsCommand], scope_name: &str| {
                 if commands.is_empty() {
+                    println!("No commands found. Use 'pacs add <name> <cmd>' to add one.");
                     return;
                 }
 
@@ -713,7 +714,6 @@ pub fn run(cli: Cli) -> Result<()> {
                     .or_else(|| env::var("EDITOR").ok())
                     .unwrap_or_else(|| "vi".to_string());
 
-                // Resolve target project
                 let project = if let Some(p) = args.project.clone() {
                     p
                 } else if let Some(active) = pacs.get_active_project()? {
@@ -722,7 +722,6 @@ pub fn run(cli: Cli) -> Result<()> {
                     anyhow::bail!("No project specified and no active project set");
                 };
 
-                // Build TOML with existing contexts and values
                 let project_ref = pacs
                     .projects
                     .iter()
@@ -769,7 +768,6 @@ pub fn run(cli: Cli) -> Result<()> {
                         })?;
                 }
 
-                // Update all environments from the file
                 for (env_name, env_values) in doc.environments {
                     pacs.edit_environment_values(&project, &env_name, env_values.values.clone())
                         .with_context(|| {
