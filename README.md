@@ -5,7 +5,20 @@
 ## Install
 
 ```sh
-cargo install --path pacs
+cargo install pacs@0.1.0-beta.2
+```
+
+## Usage
+
+```sh
+pacs add build "cargo build"    # save a command
+pacs run build                  # run it
+pacs ls                         # list all commands
+pacs edit build                 # edit in $EDITOR
+pacs rm build                   # delete it
+
+pacs project add myproj         # create a project
+pacs project activate myproj    # set active project
 ```
 
 ## Shell Completions
@@ -23,17 +36,4 @@ source <(COMPLETE=bash pacs)
 **Fish** (`~/.config/fish/config.fish`):
 ```sh
 source (COMPLETE=fish pacs | psub)
-```
-
-## Usage
-
-```sh
-pacs add build "cargo build"    # save a command
-pacs run build                  # run it
-pacs list                       # list all commands
-pacs edit build                 # edit in $EDITOR
-pacs remove build               # delete it
-
-pacs project add myproj         # create a project
-pacs project activate myproj    # set active project
 ```
