@@ -482,7 +482,6 @@ pub fn run(cli: Cli) -> Result<()> {
 
         Commands::List(args) => {
             if let Some(ref name) = args.name {
-                // Resolve and expand the command (respects active project/environment)
                 let cmd = pacs
                     .resolve_command(name, None, args.environment.as_deref())
                     .with_context(|| format!("Command '{name}' not found"))?;
@@ -498,7 +497,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 };
                 println!("{BOLD}{CYAN}{}{RESET}{}{}", cmd.name, tag_badge, cwd_badge);
                 for line in cmd.command.lines() {
-                    println!("{BLUE}{line}{RESET}");
+                    println!("{WHITE}{line}{RESET}");
                 }
                 return Ok(());
             }
@@ -525,7 +524,8 @@ pub fn run(cli: Cli) -> Result<()> {
                     return;
                 }
 
-                println!("{BOLD}{MAGENTA}── {scope_name} ──{RESET}");
+                println!("{BOLD}{GREEN}{scope_name}{RESET}{RESET}");
+                println!();
 
                 for (tag, cmds) in tags {
                     if let Some(name) = tag {
@@ -543,7 +543,7 @@ pub fn run(cli: Cli) -> Result<()> {
                             };
                             println!("{BOLD}{CYAN}{}{RESET}{}", cmd.name, cwd_badge);
                             for line in cmd.command.lines() {
-                                println!("{BLUE}{line}{RESET}");
+                                println!("{WHITE}{line}{RESET}");
                             }
                             println!();
                         }
@@ -608,7 +608,7 @@ pub fn run(cli: Cli) -> Result<()> {
             }
             ProjectCommands::List => {
                 if pacs.projects.is_empty() {
-                    println!("No projects.");
+                    println!("No projects. Use 'pacs project add' to create one.");
                 } else {
                     let active = pacs.get_active_project().ok().flatten();
                     for project in &pacs.projects {

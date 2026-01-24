@@ -1036,8 +1036,8 @@ mod tests {
         let cmds2 = pacs.list(Some("proj2"), None).unwrap();
         assert_eq!(cmds1.len(), 1);
         assert_eq!(cmds2.len(), 1);
-        assert_eq!(cmds1[0].command, "echo proj1\n");
-        assert_eq!(cmds2[0].command, "echo proj2\n");
+        assert_eq!(cmds1[0].command, "echo proj1");
+        assert_eq!(cmds2[0].command, "echo proj2");
     }
 
     #[test]
@@ -1098,7 +1098,7 @@ mod tests {
 
         assert_eq!(
             pacs.get_command_auto("proj-cmd").unwrap().command,
-            "echo project\n"
+            "echo project"
         );
         assert!(matches!(
             pacs.get_command_auto("nope"),
@@ -1123,7 +1123,7 @@ mod tests {
         .unwrap();
 
         let old = pacs.update_command_auto("cmd", "new".into()).unwrap();
-        assert_eq!(old, "old\n");
+        assert_eq!(old, "old");
         assert_eq!(pacs.get_command_auto("cmd").unwrap().command, "new");
     }
 
@@ -1150,7 +1150,7 @@ mod tests {
         ));
         assert_eq!(
             pacs.get_command_auto("new-name").unwrap().command,
-            "echo test\n"
+            "echo test"
         );
     }
 
