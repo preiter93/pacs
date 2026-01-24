@@ -1,5 +1,7 @@
 # pacs
 
+[![Crate IO](https://img.shields.io/crates/v/pacs?logo=rust&style=flat-square&logoColor=E05D44&color=E05D44)](https://crates.io/crates/pacs) ![Crates.io Downloads](https://img.shields.io/crates/d/pacs?style=flat-square) [![Continuous Integration](https://github.com/preiter93/pacs/actions/workflows/ci.yml/badge.svg)](https://github.com/preiter93/pacs/actions/workflows/ci.yml) [![Deps Status](https://deps.rs/repo/github/preiter93/pacs/status.svg?style=flat-square)](https://deps.rs/repo/github/preiter93/pacs) [![License](https://img.shields.io/crates/l/pacs?style=flat-square&color=09bd66)](./LICENSE)
+
 **P**roject **A**ware **C**ommand **S**torage - A CLI for managing and running saved shell commands.
 
 ## Install
