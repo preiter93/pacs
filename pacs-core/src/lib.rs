@@ -170,8 +170,6 @@ pub struct Project {
     pub active_environment: Option<String>,
 }
 
-/// Wrapper for global commands to enable proper TOML serialization.
-
 /// Configuration stored in config.toml
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
