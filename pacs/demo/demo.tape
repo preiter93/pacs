@@ -64,7 +64,7 @@ Type "pacs env edit" Sleep 300ms Enter
 Sleep 1.2s
 
 # Neovim actions
-Type "o"            # open new line
+Type "jjo"
 Sleep 200ms
 Type 'env = "dev"'
 Sleep 400ms
@@ -76,6 +76,9 @@ Sleep 1s
 Type@80ms "# Switch to an environment" Sleep 300ms Enter
 Type "pacs env switch dev" Sleep 300ms Enter
 Sleep 800ms
+
+Type "pacs env ls" Sleep 300ms Enter
+Sleep 1.5s
 
 Type@80ms "# Show command details within environment" Sleep 300ms Enter
 Type "pacs ls" Sleep 300ms Enter
