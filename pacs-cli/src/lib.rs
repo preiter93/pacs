@@ -374,13 +374,17 @@ pub fn run(cli: Cli) -> Result<()> {
                 let cmd = pacs
                     .get_command_auto(name)
                     .with_context(|| format!("Command '{name}' not found"))?;
-                println!("{}:", cmd.name);
-                if !cmd.tag.is_empty() {
-                    println!("{}tag:{} {}", GREY, RESET, cmd.tag);
-                }
-                if let Some(ref cwd) = cmd.cwd {
-                    println!("{GREY}cwd:{RESET} {cwd}");
-                }
+                let tag_badge = if cmd.tag.is_empty() {
+                    String::new()
+                } else {
+                    format!(" {BOLD}{YELLOW}[{}]{RESET}", cmd.tag)
+                };
+                let cwd_badge = if let Some(ref cwd) = cmd.cwd {
+                    format!(" {GREY}({cwd}){RESET}")
+                } else {
+                    String::new()
+                };
+                println!("{BOLD}{CYAN}{}{RESET}{}{}", cmd.name, tag_badge, cwd_badge);
                 println!();
                 for line in cmd.command.lines() {
                     println!("{BLUE}{line}{RESET}");
@@ -414,14 +418,19 @@ pub fn run(cli: Cli) -> Result<()> {
 
                 for (tag, cmds) in tags {
                     if let Some(name) = tag {
-                        println!("{YELLOW}[{name}]{RESET}");
+                        println!("{BOLD}{YELLOW}[{name}]{RESET}");
                     }
 
                     for cmd in cmds {
                         if args.names {
-                            println!("{}", cmd.name);
+                            println!("{BOLD}{CYAN}{}{RESET}", cmd.name);
                         } else {
-                            println!("{}:", cmd.name);
+                            let cwd_badge = if let Some(ref cwd) = cmd.cwd {
+                                format!(" {GREY}({cwd}){RESET}")
+                            } else {
+                                String::new()
+                            };
+                            println!("{BOLD}{CYAN}{}{RESET}{}", cmd.name, cwd_badge);
                             for line in cmd.command.lines() {
                                 println!("{BLUE}{line}{RESET}");
                             }
