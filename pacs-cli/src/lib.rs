@@ -73,10 +73,10 @@ pub enum Commands {
     },
 
     /// Manage project-specific environments
-    #[command(visible_alias = "env")]
-    Environment {
+    #[command(visible_alias = "e")]
+    Env {
         #[command(subcommand)]
-        command: EnvironmentCommands,
+        command: EnvCommands,
     },
 }
 
@@ -104,26 +104,26 @@ pub enum ProjectCommands {
 }
 
 #[derive(Subcommand, Debug)]
-pub enum EnvironmentCommands {
+pub enum EnvCommands {
     /// Add a new empty environment to a project
-    Add(EnvironmentAddArgs),
+    Add(EnvAddArgs),
 
     /// Remove an environment from a project
     #[command(visible_alias = "rm")]
-    Remove(EnvironmentRemoveArgs),
+    Remove(EnvRemoveArgs),
 
     /// Edit an environment's values (opens editor)
-    Edit(EnvironmentEditArgs),
+    Edit(EnvEditArgs),
 
     /// List environments for a project
     #[command(visible_alias = "ls")]
-    List(EnvironmentListArgs),
+    List(EnvListArgs),
 
     /// Switch to an environment
-    Switch(EnvironmentSwitchArgs),
+    Switch(EnvSwitchArgs),
 
     /// Show the active environment for a project
-    Active(EnvironmentActiveArgs),
+    Active(EnvActiveArgs),
 }
 
 #[derive(Args, Debug)]
@@ -151,7 +151,7 @@ pub struct ProjectSwitchArgs {
 }
 
 #[derive(Args, Debug)]
-pub struct EnvironmentAddArgs {
+pub struct EnvAddArgs {
     /// Environment name to add (e.g., dev, stg)
     pub name: String,
 
@@ -161,7 +161,7 @@ pub struct EnvironmentAddArgs {
 }
 
 #[derive(Args, Debug)]
-pub struct EnvironmentRemoveArgs {
+pub struct EnvRemoveArgs {
     /// Environment name to remove
     pub name: String,
 
@@ -171,21 +171,21 @@ pub struct EnvironmentRemoveArgs {
 }
 
 #[derive(Args, Debug)]
-pub struct EnvironmentEditArgs {
+pub struct EnvEditArgs {
     /// Target project (defaults to active project if omitted)
     #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
     pub project: Option<String>,
 }
 
 #[derive(Args, Debug)]
-pub struct EnvironmentListArgs {
+pub struct EnvListArgs {
     /// Target project (defaults to active project if omitted)
     #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
     pub project: Option<String>,
 }
 
 #[derive(Args, Debug)]
-pub struct EnvironmentSwitchArgs {
+pub struct EnvSwitchArgs {
     /// Environment name to switch to
     pub name: String,
 
@@ -195,7 +195,7 @@ pub struct EnvironmentSwitchArgs {
 }
 
 #[derive(Args, Debug)]
-pub struct EnvironmentActiveArgs {
+pub struct EnvActiveArgs {
     /// Target project (defaults to active project if omitted)
     #[arg(short, long, add = ArgValueCandidates::new(complete_projects))]
     pub project: Option<String>,
@@ -348,7 +348,6 @@ pub fn run(cli: Cli) -> Result<()> {
         Commands::Init => {
             println!("Pacs initialized at ~/.pacs/");
 
-            // Ask user to create their first project
             print!("Enter a name for your first project: ");
             io::stdout().flush()?;
             let mut project_name = String::new();
@@ -409,12 +408,10 @@ pub fn run(cli: Cli) -> Result<()> {
             pacs.add_command(pacs_cmd, args.project.as_deref())
                 .with_context(|| format!("Failed to add command '{}'", args.name))?;
 
-            // Get the project name for the success message
             let project_name = if let Some(ref p) = args.project {
                 p.clone()
             } else {
-                pacs.get_active_project()?
-                    .ok_or_else(|| anyhow::anyhow!("No active project set"))?
+                pacs.get_active_project_name()?
             };
 
             println!(
@@ -556,9 +553,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 let commands = pacs.list(Some(project), args.environment.as_deref())?;
                 print_tagged(&commands, project);
             } else {
-                let active_project = pacs.get_active_project()?.ok_or_else(|| {
-                    anyhow::anyhow!("No active project. Use 'pacs project add' to create one or 'pacs project switch' to activate one.")
-                })?;
+                let active_project =   pacs.get_active_project_name().context("No active project. Use 'pacs project add' to create one or 'pacs project switch' to activate one.")?;
                 let commands = pacs.list(None, args.environment.as_deref())?;
                 print_tagged(&commands, &active_project);
             }
@@ -611,7 +606,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 if pacs.projects.is_empty() {
                     println!("No projects. Use 'pacs project add' to create one.");
                 } else {
-                    let active = pacs.get_active_project().ok().flatten();
+                    let active = pacs.get_active_project_name().ok();
                     for project in &pacs.projects {
                         let path_info = project
                             .path
@@ -639,23 +634,15 @@ pub fn run(cli: Cli) -> Result<()> {
                 pacs.clear_active_project()?;
                 println!("Active project cleared.");
             }
-            ProjectCommands::Active => {
-                if let Some(active) = pacs.get_active_project()? {
-                    println!("{active}");
-                } else {
-                    println!("No active project.");
-                }
-            }
+            ProjectCommands::Active => match pacs.get_active_project_name() {
+                Ok(active) => println!("{active}"),
+                Err(_) => println!("No active project."),
+            },
         },
-        Commands::Environment { command } => match command {
-            EnvironmentCommands::Add(args) => {
-                let project = if let Some(p) = args.project.clone() {
-                    p
-                } else if let Some(active) = pacs.get_active_project().ok().flatten() {
-                    active
-                } else {
-                    anyhow::bail!("No project specified and no active project set");
-                };
+        Commands::Env { command } => match command {
+            EnvCommands::Add(args) => {
+                let project = resolve_project_name(&pacs, args.project)?;
+
                 pacs.add_environment(&project, &args.name)
                     .with_context(|| {
                         format!(
@@ -675,14 +662,9 @@ pub fn run(cli: Cli) -> Result<()> {
                     args.name, project
                 );
             }
-            EnvironmentCommands::Remove(args) => {
-                let project = if let Some(p) = args.project.clone() {
-                    p
-                } else if let Some(active) = pacs.get_active_project()? {
-                    active
-                } else {
-                    anyhow::bail!("No project specified and no active project set");
-                };
+            EnvCommands::Remove(args) => {
+                let project = resolve_project_name(&pacs, args.project)?;
+
                 pacs.remove_environment(&project, &args.name)
                     .with_context(|| {
                         format!(
@@ -695,7 +677,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     args.name, project
                 );
             }
-            EnvironmentCommands::Edit(args) => {
+            EnvCommands::Edit(args) => {
                 #[derive(serde::Deserialize)]
                 struct EditDoc {
                     #[serde(default)]
@@ -714,13 +696,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     .or_else(|| env::var("EDITOR").ok())
                     .unwrap_or_else(|| "vi".to_string());
 
-                let project = if let Some(p) = args.project.clone() {
-                    p
-                } else if let Some(active) = pacs.get_active_project()? {
-                    active
-                } else {
-                    anyhow::bail!("No project specified and no active project set");
-                };
+                let project = resolve_project_name(&pacs, args.project)?;
 
                 let project_ref = pacs
                     .projects
@@ -778,20 +754,14 @@ pub fn run(cli: Cli) -> Result<()> {
                 }
                 println!("All environments updated for project '{project}'.");
             }
-            EnvironmentCommands::List(args) => {
-                // Resolve project: use provided or active
-                let project_name = if let Some(p) = args.project.clone() {
-                    p
-                } else if let Some(active) = pacs.get_active_project()? {
-                    active
-                } else {
-                    anyhow::bail!("No project specified and no active project set");
-                };
+            EnvCommands::List(args) => {
+                let project = resolve_project_name(&pacs, args.project)?;
+
                 let project = pacs
                     .projects
                     .iter()
-                    .find(|p| p.name.eq_ignore_ascii_case(&project_name))
-                    .with_context(|| format!("Project '{project_name}' not found"))?;
+                    .find(|p| p.name.eq_ignore_ascii_case(&project))
+                    .with_context(|| format!("Project '{project}' not found"))?;
                 let active = project.active_environment.as_ref();
                 if project.environments.is_empty() {
                     println!("No environments.");
@@ -811,14 +781,9 @@ pub fn run(cli: Cli) -> Result<()> {
                     }
                 }
             }
-            EnvironmentCommands::Switch(args) => {
-                let project = if let Some(p) = args.project.clone() {
-                    p
-                } else if let Some(active) = pacs.get_active_project()? {
-                    active
-                } else {
-                    anyhow::bail!("No project specified and no active project set");
-                };
+            EnvCommands::Switch(args) => {
+                let project = resolve_project_name(&pacs, args.project)?;
+
                 pacs.activate_environment(&project, &args.name)
                     .with_context(|| {
                         format!(
@@ -831,14 +796,9 @@ pub fn run(cli: Cli) -> Result<()> {
                     args.name, project
                 );
             }
-            EnvironmentCommands::Active(args) => {
-                let project = if let Some(p) = args.project.clone() {
-                    p
-                } else if let Some(active) = pacs.get_active_project()? {
-                    active
-                } else {
-                    anyhow::bail!("No project specified and no active project set");
-                };
+            EnvCommands::Active(args) => {
+                let project = resolve_project_name(&pacs, args.project)?;
+
                 match pacs.get_active_environment(&project)? {
                     Some(name) => println!("{name}"),
                     None => println!("No active environment."),
@@ -848,6 +808,18 @@ pub fn run(cli: Cli) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn resolve_project_name(pacs: &Pacs, project_name: Option<String>) -> Result<String> {
+    match project_name {
+        Some(p) => Ok(p),
+        None => pacs.get_active_project_name().map_err(|_| {
+            anyhow::anyhow!(
+                "No project specified and no active project set. \
+                    Use 'pacs project add' to create one or 'pacs project switch' to activate one."
+            )
+        }),
+    }
 }
 
 #[cfg(test)]
