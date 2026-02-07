@@ -1,7 +1,9 @@
 #![allow(dead_code, unused)]
 mod app;
+mod client;
 mod components;
 mod help;
+mod sidebar;
 mod theme;
 mod util;
 
@@ -11,14 +13,17 @@ use ratatui::crossterm::{
 };
 use tui_world::prelude::*;
 
-use crate::{app::GLOBAL, util::get_active_ids};
+use crate::{
+    app::{GLOBAL, setup_world},
+    util::get_active_ids,
+};
 
 fn main() -> anyhow::Result<()> {
     let mut terminal = ratatui::init();
     execute!(std::io::stdout(), event::EnableMouseCapture)?;
 
     let mut world = World::default();
-    app::setup(&mut world);
+    setup_world(&mut world);
 
     loop {
         terminal.draw(|frame| app::render(frame, &mut world))?;

@@ -1,6 +1,6 @@
 use ratatui::{
     style::{Color, Style},
-    widgets::BorderType,
+    widgets::{Block, BorderType, Borders},
 };
 use tui_theme_builder::ThemeBuilder;
 
@@ -39,7 +39,7 @@ pub struct Theme {
     #[style(fg = accent)]
     pub title: Style,
 
-    #[style(fg = accent)]
+    #[style(fg = muted)]
     pub border: Style,
 
     #[style(fg = accent)]
@@ -51,12 +51,21 @@ pub struct Theme {
     #[style(fg = success)]
     pub keybinding_key: Style,
 
-    #[border_type(rounded)]
+    #[border_type(plain)]
     pub border_type: BorderType,
 }
 
 impl Default for Theme {
     fn default() -> Self {
         Self::build(&Colors::default())
+    }
+}
+
+impl Theme {
+    pub fn block<'a>(&self) -> Block<'a> {
+        Block::default()
+            .borders(Borders::ALL)
+            .border_type(self.border_type)
+            .border_style(self.border)
     }
 }

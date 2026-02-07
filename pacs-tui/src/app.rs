@@ -1,4 +1,11 @@
-use crate::{components::selectable_text::Selections, help, util::kc};
+use crate::{
+    client::PacsClient,
+    components::selectable_text::Selections,
+    help,
+    sidebar::{PROJECTS, ProjectsState, Sidebar},
+    util::kc,
+};
+use anyhow::Result;
 use ratatui::{
     Frame,
     crossterm::event::KeyCode,
@@ -19,13 +26,16 @@ pub struct AppState {
     pub area: Rect,
 }
 
-pub fn setup(world: &mut World) {
+pub fn setup_world(world: &mut World) -> Result<()> {
     world.insert(Theme::default());
     world.insert(AppState::default());
-    world.insert(Focus::default());
-    world.insert(Selections::default());
+    world.insert(Focus::new(PROJECTS));
+    world.insert(PacsClient::new()?);
+    world.insert(ProjectsState::new());
 
     global_keybindings(world);
+
+    Ok(())
 }
 
 fn global_keybindings(world: &mut World) {
@@ -35,7 +45,7 @@ fn global_keybindings(world: &mut World) {
         world.get_mut::<AppState>().should_quit = true;
     });
 
-    kb.bind(GLOBAL, KeyBinding::key(kc('?')), "Help", |world| {
+    kb.bind(GLOBAL, '?', "Help", |world| {
         help::toggle(world);
     });
 }
@@ -52,9 +62,18 @@ pub fn render(frame: &mut Frame, world: &mut World) {
 }
 
 pub fn render_main(world: &mut World, frame: &mut Frame, area: Rect) {
-    let [header, _] = Layout::vertical([Constraint::Length(2), Constraint::Min(0)]).areas(area);
+    let [header, content] =
+        Layout::vertical([Constraint::Length(2), Constraint::Min(0)]).areas(area);
 
     render_title(world, frame, header);
+    render_content(world, frame, content);
+}
+
+pub fn render_content(world: &mut World, frame: &mut Frame, area: Rect) {
+    let [sidebar, _] =
+        Layout::horizontal([Constraint::Percentage(20), Constraint::Min(0)]).areas(area);
+
+    Sidebar::render(world, frame, sidebar);
 }
 
 fn render_title(world: &mut World, frame: &mut ratatui::Frame, area: Rect) {
