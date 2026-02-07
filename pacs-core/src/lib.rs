@@ -267,10 +267,29 @@ impl Pacs {
         self.get_project(&name)
     }
 
+    /// Returns a reference to the specified project, or the active project if none specified.
+    pub fn get_project_or_active(&self, name: Option<ProjectName>) -> Result<&Project, PacsError> {
+        match name {
+            Some(n) => self.get_project(n),
+            None => self.get_active_project(),
+        }
+    }
+
     /// Returns a mutable reference to the active project.
     pub fn get_active_project_mut(&mut self) -> Result<&mut Project, PacsError> {
         let name = self.get_active_project_name()?;
         self.get_project_mut(&name)
+    }
+
+    /// Returns a mutable reference to the specified project, or the active project if none specified.
+    pub fn get_project_or_active_mut(
+        &mut self,
+        name: Option<ProjectName>,
+    ) -> Result<&mut Project, PacsError> {
+        match name {
+            Some(n) => self.get_project_mut(n),
+            None => self.get_active_project_mut(),
+        }
     }
 
     /// Creates a new project with the given name and optional path.
@@ -330,18 +349,15 @@ impl Pacs {
         cmd: PacsCommand,
         project_name: Option<ProjectName>,
     ) -> Result<(), PacsError> {
-        let project_name = match project_name {
-            Some(name) => name,
-            None => &self.get_active_project_name()?,
-        };
+        let project = self.get_project_or_active_mut(project_name)?;
+        let project_name = project.name.clone();
 
-        let project = self.get_project_mut(project_name)?;
         if project.commands.iter().any(|c| c.name == cmd.name) {
             return Err(PacsError::CommandExists(cmd.name));
         }
 
         project.commands.push(cmd);
-        self.save_project_by_name(project_name)?;
+        self.save_project_by_name(&project_name)?;
         Ok(())
     }
 
@@ -351,12 +367,8 @@ impl Pacs {
         command_name: &str,
         project_name: Option<ProjectName>,
     ) -> Result<(), PacsError> {
-        let project_name = match project_name {
-            Some(name) => name,
-            None => &self.get_active_project_name()?,
-        };
-
-        let project = self.get_project_mut(project_name)?;
+        let project = self.get_project_or_active_mut(project_name)?;
+        let project_name = project.name.clone();
 
         let before = project.commands.len();
         project.commands.retain(|c| c.name != command_name);
@@ -365,7 +377,7 @@ impl Pacs {
             return Err(PacsError::CommandNotFound(command_name.to_string()));
         }
 
-        self.save_project_by_name(project_name)?;
+        self.save_project_by_name(&project_name)?;
         Ok(())
     }
 
@@ -435,12 +447,8 @@ impl Pacs {
         project_name: Option<ProjectName>,
         environment: Option<EnvironmentName>,
     ) -> Result<Vec<PacsCommand>, PacsError> {
-        let project_name = match project_name {
-            Some(name) => name,
-            None => &self.get_active_project_name()?,
-        };
-
-        let project = self.get_project(project_name)?;
+        let project = self.get_project_or_active(project_name)?;
+        let project_name = &project.name;
         let environment = environment.or(project.active_environment.as_deref());
 
         let mut cmds: Vec<PacsCommand> = Vec::with_capacity(project.commands.len());
@@ -462,12 +470,8 @@ impl Pacs {
         project_name: Option<ProjectName>,
         environment: Option<EnvironmentName>,
     ) -> Result<PacsCommand, PacsError> {
-        let project_name = match project_name {
-            Some(name) => name,
-            None => &self.get_active_project_name()?,
-        };
-
-        let project = self.get_project(project_name)?;
+        let project = self.get_project_or_active(project_name)?;
+        let project_name = &project.name;
         let environment = environment.or(project.active_environment.as_deref());
 
         let cmd = project
@@ -669,10 +673,19 @@ impl Pacs {
     /// Returns the currently active environment name for a project, if any.
     pub fn get_active_environment(
         &self,
-        project_name: ProjectName,
+        project_name: Option<ProjectName>,
     ) -> Result<Option<String>, PacsError> {
-        let project = self.get_project(project_name)?;
+        let project = self.get_project_or_active(project_name)?;
         Ok(project.active_environment.clone())
+    }
+
+    /// Returns the environments for a project.
+    pub fn list_environments(
+        &self,
+        project_name: Option<ProjectName>,
+    ) -> Result<&[Environment], PacsError> {
+        let project = self.get_project_or_active(project_name)?;
+        Ok(&project.environments)
     }
 
     fn expand_command_with_environment(

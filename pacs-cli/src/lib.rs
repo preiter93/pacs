@@ -755,19 +755,18 @@ pub fn run(cli: Cli) -> Result<()> {
                 println!("All environments updated for project '{project}'.");
             }
             EnvCommands::List(args) => {
-                let project = resolve_project_name(&pacs, args.project)?;
+                let environments = pacs
+                    .list_environments(args.project.as_deref())
+                    .context("Failed to list environments")?;
+                let active = pacs
+                    .get_active_environment(args.project.as_deref())
+                    .context("Failed to get active environment")?;
 
-                let project = pacs
-                    .projects
-                    .iter()
-                    .find(|p| p.name.eq_ignore_ascii_case(&project))
-                    .with_context(|| format!("Project '{project}' not found"))?;
-                let active = project.active_environment.as_ref();
-                if project.environments.is_empty() {
+                if environments.is_empty() {
                     println!("No environments.");
                 } else {
-                    for env in &project.environments {
-                        let active_marker = if active == Some(&env.name) {
+                    for env in environments {
+                        let active_marker = if active.as_deref() == Some(env.name.as_str()) {
                             format!(" {GREEN}*{RESET}")
                         } else {
                             String::new()
@@ -799,7 +798,7 @@ pub fn run(cli: Cli) -> Result<()> {
             EnvCommands::Active(args) => {
                 let project = resolve_project_name(&pacs, args.project)?;
 
-                match pacs.get_active_environment(&project)? {
+                match pacs.get_active_environment(Some(&project))? {
                     Some(name) => println!("{name}"),
                     None => println!("No active environment."),
                 }
