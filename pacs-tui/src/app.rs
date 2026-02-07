@@ -1,6 +1,6 @@
 use crate::{
     client::PacsClient,
-    commands::{CONTENT, MainPanel},
+    commands::{CONTENT, CommandsPanel},
     components::selectable_text::Selections,
     help,
     sidebar::{PROJECTS, Projects, ProjectsState, Sidebar},
@@ -89,27 +89,25 @@ pub fn render_content(world: &mut World, frame: &mut Frame, area: Rect) {
         Layout::horizontal([Constraint::Percentage(20), Constraint::Min(0)]).areas(area);
 
     Sidebar::render(world, frame, sidebar);
-    MainPanel::render(world, frame, main);
+    CommandsPanel::render(world, frame, main);
 }
 
 fn render_title(world: &mut World, frame: &mut ratatui::Frame, area: Rect) {
     let theme = world.get::<Theme>();
 
-    let block = Block::default()
-        .borders(Borders::BOTTOM)
-        .border_style(theme.border_focused)
-        .border_type(BorderType::Thick);
-
     let title = Paragraph::new(Line::from(vec![
-        Span::from("PACS").style(theme.text_accent),
-        Span::from(" - Project Aware Command Storage").style(theme.text_muted),
-    ]))
-    .block(block);
+        Span::styled(" PACS", theme.text_accent),
+        Span::styled(" - ", theme.text_muted),
+        Span::styled("Project Aware Command Storage", theme.text_muted),
+    ]));
 
     frame.render_widget(title, area);
 
-    // SelectableText::new(TEXT_ID, "PACS")
-    //     .style(theme.text)
-    //     .selection_style(theme.text_muted)
-    //     .render(area, frame.buffer_mut(), world);
+    // Render a subtle separator line below
+    let separator = Block::default()
+        .borders(Borders::BOTTOM)
+        .border_style(theme.border)
+        .border_type(BorderType::Rounded);
+
+    frame.render_widget(separator, area);
 }

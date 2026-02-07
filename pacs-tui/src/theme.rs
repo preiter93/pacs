@@ -1,25 +1,31 @@
 use ratatui::{
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     widgets::{Block, BorderType, Borders},
 };
 use tui_theme_builder::ThemeBuilder;
 
 pub struct Colors {
+    pub bg: Color,
     pub fg: Color,
     pub muted: Color,
     pub accent: Color,
+    pub accent_secondary: Color,
     pub success: Color,
     pub highlight: Color,
+    pub surface: Color,
 }
 
 impl Default for Colors {
     fn default() -> Self {
         Self {
-            fg: Color::Rgb(192, 202, 245),
-            muted: Color::Rgb(86, 95, 137),
-            accent: Color::Rgb(122, 162, 247),
-            success: Color::Rgb(158, 206, 106),
-            highlight: Color::Rgb(51, 70, 124),
+            bg: Color::Rgb(15, 15, 25),
+            fg: Color::Rgb(220, 225, 245),
+            muted: Color::Rgb(90, 95, 130),
+            accent: Color::Rgb(140, 130, 255),
+            accent_secondary: Color::Rgb(80, 180, 255),
+            success: Color::Rgb(130, 230, 180),
+            highlight: Color::Rgb(45, 40, 80),
+            surface: Color::Rgb(25, 25, 40),
         }
     }
 }
@@ -33,8 +39,11 @@ pub struct Theme {
     #[style(fg = muted)]
     pub text_muted: Style,
 
-    #[style(fg = accent, bold)]
+    #[style(fg = accent, add_modifier = "Modifier::BOLD")]
     pub text_accent: Style,
+
+    #[style(fg = accent_secondary, add_modifier = "Modifier::BOLD")]
+    pub text_accent_alt: Style,
 
     #[style(fg = accent)]
     pub title: Style,
@@ -48,11 +57,17 @@ pub struct Theme {
     #[style(fg = fg, bg = highlight)]
     pub selected: Style,
 
-    #[style(fg = success)]
+    #[style(fg = accent_secondary, add_modifier = "Modifier::BOLD")]
     pub keybinding_key: Style,
+
+    #[style(fg = success)]
+    pub success: Style,
 
     #[border_type(plain)]
     pub border_type: BorderType,
+
+    #[border_type(thick)]
+    pub border_type_focused: BorderType,
 }
 
 impl Default for Theme {
@@ -69,12 +84,11 @@ impl Theme {
             .border_style(self.border)
     }
 
-    /// Get a block styled based on focus state
     pub fn block_for_focus<'a>(&self, focused: bool) -> Block<'a> {
         Block::default()
             .borders(Borders::ALL)
             .border_type(if focused {
-                BorderType::Thick
+                self.border_type_focused
             } else {
                 self.border_type
             })

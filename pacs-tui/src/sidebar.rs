@@ -4,7 +4,7 @@ use ratatui::{
     crossterm::event::KeyCode,
     layout::{Constraint, Layout},
     text::{Line, Span},
-    widgets::{Borders, List, ListState, Paragraph, StatefulWidget},
+    widgets::{Borders, HighlightSpacing, List, ListState, Paragraph, StatefulWidget},
 };
 use tui_world::{Focus, Pointer, keys};
 use tui_world::{Keybindings, WidgetId, World};
@@ -89,9 +89,12 @@ impl Projects {
 
         let projects = client.list_projects().clone();
 
-        let mut state = &mut world.get_mut::<ProjectsState>().state;
-        List::new(projects)
-            .highlight_symbol("▶ ")
-            .render(projects_area, frame.buffer_mut(), state);
+        let list = List::new(projects)
+            .highlight_symbol(" > ")
+            .highlight_style(theme.selected)
+            .highlight_spacing(HighlightSpacing::Always);
+
+        let state = &mut world.get_mut::<ProjectsState>().state;
+        list.render(projects_area, frame.buffer_mut(), state);
     }
 }
