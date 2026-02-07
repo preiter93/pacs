@@ -18,7 +18,7 @@
 //! **Environment Management:**
 //! - `add_environment(project_name, env_name)` - Add an environment to a project
 //! - `remove_environment(project_name, env_name)` - Remove an environment
-//! - `activate_environment(project_name, env_name)` - Set active environment for a project
+//! - `set_active_environment(project_name, env_name)` - Set active environment for a project
 //! - `edit_environment_values(project_name, env_name, values)` - Update environment values
 //!
 //! ### Auto Functions (use active project)
@@ -639,8 +639,8 @@ impl Pacs {
         self.save_project_by_name(project_name)
     }
 
-    /// Activates a specific environment for a project.
-    pub fn activate_environment(
+    /// Sets the active environment for a project.
+    pub fn set_active_environment(
         &mut self,
         project_name: ProjectName,
         environment_name: EnvironmentName,

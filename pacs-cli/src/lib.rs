@@ -650,7 +650,7 @@ pub fn run(cli: Cli) -> Result<()> {
                             args.name, project
                         )
                     })?;
-                pacs.activate_environment(&project, &args.name)
+                pacs.set_active_environment(&project, &args.name)
                     .with_context(|| {
                         format!(
                             "Failed to activate environment '{}' in project '{}'",
@@ -738,7 +738,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     toml::from_str(&edited).with_context(|| "Failed to parse edited TOML")?;
 
                 if let Some(active_name) = doc.active_environment {
-                    pacs.activate_environment(&project, &active_name)
+                    pacs.set_active_environment(&project, &active_name)
                         .with_context(|| {
                             format!("Failed to set active environment '{active_name}'")
                         })?;
@@ -783,7 +783,7 @@ pub fn run(cli: Cli) -> Result<()> {
             EnvCommands::Switch(args) => {
                 let project = resolve_project_name(&pacs, args.project)?;
 
-                pacs.activate_environment(&project, &args.name)
+                pacs.set_active_environment(&project, &args.name)
                     .with_context(|| {
                         format!(
                             "Failed to switch to environment '{}' in project '{}'",
