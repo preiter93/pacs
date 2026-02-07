@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use anyhow::Context;
 use anyhow::Result;
 use pacs_core::Pacs;
@@ -41,5 +43,20 @@ impl PacsClient {
         let project = self.pacs.get_active_project_name()?;
         self.pacs.set_active_environment(&project, name)?;
         Ok(())
+    }
+
+    pub fn environment_values(&self) -> BTreeMap<String, String> {
+        let Ok(project) = self.pacs.get_active_project() else {
+            return BTreeMap::new();
+        };
+        let Some(active_env) = &project.active_environment else {
+            return BTreeMap::new();
+        };
+        project
+            .environments
+            .iter()
+            .find(|e| &e.name == active_env)
+            .map(|e| e.values.clone())
+            .unwrap_or_default()
     }
 }
