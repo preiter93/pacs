@@ -2,7 +2,7 @@ use crate::{
     client::PacsClient,
     components::selectable_text::Selections,
     help,
-    sidebar::{PROJECTS, ProjectsState, Sidebar},
+    sidebar::{PROJECTS, Projects, ProjectsState, Sidebar},
     util::kc,
 };
 use anyhow::Result;
@@ -34,6 +34,7 @@ pub fn setup_world(world: &mut World) -> Result<()> {
     world.insert(ProjectsState::new());
 
     global_keybindings(world);
+    Projects::register_keybindings(world);
 
     Ok(())
 }

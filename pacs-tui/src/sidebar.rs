@@ -1,10 +1,10 @@
-use crate::{app::AppState, client::PacsClient, theme::Theme};
+use crate::{client::PacsClient, theme::Theme};
 use ratatui::{
     Frame,
     crossterm::event::KeyCode,
-    layout::{Constraint, Layout, Margin},
+    layout::{Constraint, Layout},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListState, Paragraph, StatefulWidget},
+    widgets::{Borders, List, ListState, Paragraph, StatefulWidget},
 };
 use tui_world::{Focus, keys};
 use tui_world::{Keybindings, WidgetId, World};
@@ -15,9 +15,10 @@ pub struct Sidebar;
 
 impl Sidebar {
     pub fn render(world: &mut World, frame: &mut Frame, area: ratatui::prelude::Rect) {
+        let is_focused = world.get::<Focus>().is_focused(PROJECTS);
         let theme = world.get::<Theme>();
 
-        let block = theme.block();
+        let block = theme.block_for_focus(is_focused);
         let inner_area = block.inner(area);
 
         frame.render_widget(block, area);
@@ -51,16 +52,7 @@ impl ProjectsState {
 pub struct Projects;
 
 impl Projects {
-    pub fn setup_keybindings(world: &mut World) {
-        let focused = {
-            let focus = world.get::<Focus>();
-            focus.id == Some(PROJECTS)
-        };
-
-        if !focused {
-            return;
-        }
-
+    pub fn register_keybindings(world: &mut World) {
         let kb = world.get_mut::<Keybindings>();
 
         kb.bind_many(PROJECTS, keys![KeyCode::Down, 'j'], "Down", |world| {
@@ -73,8 +65,6 @@ impl Projects {
     }
 
     pub fn render(world: &mut World, frame: &mut Frame, area: ratatui::prelude::Rect) {
-        Self::setup_keybindings(world);
-
         let theme = world.get::<Theme>();
         let client = world.get::<PacsClient>();
 

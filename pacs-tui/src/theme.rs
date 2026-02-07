@@ -68,4 +68,20 @@ impl Theme {
             .border_type(self.border_type)
             .border_style(self.border)
     }
+
+    /// Get a block styled based on focus state
+    pub fn block_for_focus<'a>(&self, focused: bool) -> Block<'a> {
+        Block::default()
+            .borders(Borders::ALL)
+            .border_type(if focused {
+                BorderType::Thick
+            } else {
+                self.border_type
+            })
+            .border_style(if focused {
+                self.border_focused
+            } else {
+                self.border
+            })
+    }
 }
