@@ -1,8 +1,9 @@
 use crate::{
     client::PacsClient,
+    commands::{CONTENT, MainPanel},
     components::selectable_text::Selections,
     help,
-    sidebar::{PROJECTS, Projects, ProjectsState, Sidebar},
+    sidebar::{Projects, ProjectsState, Sidebar},
     util::kc,
 };
 use anyhow::Result;
@@ -18,6 +19,8 @@ use tui_world::{Focus, KeyBinding, Keybindings, Pointer, WidgetId, World};
 use crate::theme::Theme;
 
 pub const GLOBAL: WidgetId = WidgetId("Global");
+pub const PROJECTS: WidgetId = WidgetId("Projects");
+pub const FOCUS_RING: [WidgetId; 2] = [PROJECTS, CONTENT];
 
 #[derive(Default)]
 pub struct AppState {
@@ -49,6 +52,16 @@ fn global_keybindings(world: &mut World) {
     kb.bind(GLOBAL, '?', "Help", |world| {
         help::toggle(world);
     });
+
+    kb.bind(GLOBAL, KeyCode::Tab, "Next Focus", |world| {
+        let focus = world.get_mut::<Focus>();
+        if let Some(current) = focus.id {
+            if let Some(idx) = FOCUS_RING.iter().position(|&id| id == current) {
+                let next = (idx + 1) % FOCUS_RING.len();
+                focus.id = Some(FOCUS_RING[next]);
+            }
+        }
+    });
 }
 
 pub fn render(frame: &mut Frame, world: &mut World) {
@@ -71,10 +84,11 @@ pub fn render_main(world: &mut World, frame: &mut Frame, area: Rect) {
 }
 
 pub fn render_content(world: &mut World, frame: &mut Frame, area: Rect) {
-    let [sidebar, _] =
+    let [sidebar, main] =
         Layout::horizontal([Constraint::Percentage(20), Constraint::Min(0)]).areas(area);
 
     Sidebar::render(world, frame, sidebar);
+    MainPanel::render(world, frame, main);
 }
 
 fn render_title(world: &mut World, frame: &mut ratatui::Frame, area: Rect) {

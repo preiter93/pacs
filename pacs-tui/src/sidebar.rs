@@ -1,4 +1,4 @@
-use crate::{client::PacsClient, theme::Theme};
+use crate::{app::PROJECTS, client::PacsClient, theme::Theme};
 use ratatui::{
     Frame,
     crossterm::event::KeyCode,
@@ -8,8 +8,6 @@ use ratatui::{
 };
 use tui_world::{Focus, keys};
 use tui_world::{Keybindings, WidgetId, World};
-
-pub const PROJECTS: WidgetId = WidgetId("Projects");
 
 pub struct Sidebar;
 

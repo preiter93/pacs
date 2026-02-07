@@ -1,6 +1,7 @@
 #![allow(dead_code, unused)]
 mod app;
 mod client;
+mod commands;
 mod components;
 mod help;
 mod sidebar;
