@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["pacs", "pacs-cli", "pacs-core"]
+members = ["pacs", "pacs-cli", "pacs-core", "pacs-tui"]
 
 [workspace.package]
 version = "0.1.1"

@@ -1,0 +1,15 @@
+[package]
+name = "pacs-tui"
+version.workspace = true
+repository.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description.workspace = true
+readme.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+ratatui = "0.30.0"
+tui-world = { path="../../tui-world", version = "0.1.0" }
+tui-theme-builder = { path="../../tui-theme-builder/tui-theme-builder", version = "0.2.0" }
