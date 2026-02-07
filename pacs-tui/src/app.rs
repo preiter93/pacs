@@ -3,7 +3,9 @@ use crate::{
     commands::{CONTENT, CommandsPanel},
     components::selectable_text::Selections,
     help,
-    sidebar::{PROJECTS, Projects, ProjectsState, Sidebar},
+    sidebar::{
+        ENVIRONMENTS, Environments, EnvironmentsState, PROJECTS, Projects, ProjectsState, Sidebar,
+    },
     util::kc,
 };
 use anyhow::Result;
@@ -34,11 +36,14 @@ pub fn setup_world(world: &mut World) -> Result<()> {
     world.insert(Theme::default());
     world.insert(AppState::default());
     world.insert(Focus::new(PROJECTS));
-    world.insert(PacsClient::new()?);
-    world.insert(ProjectsState::new());
+    let client = PacsClient::new()?;
+    world.insert(ProjectsState::new(&client));
+    world.insert(EnvironmentsState::new(&client));
+    world.insert(client);
 
     global_keybindings(world);
     Projects::register_keybindings(world);
+    Environments::register_keybindings(world);
 
     Ok(())
 }
@@ -57,6 +62,11 @@ fn global_keybindings(world: &mut World) {
     kb.bind(GLOBAL, KeyCode::Tab, "Next Focus", |world| {
         let focus = world.get_mut::<Focus>();
         if let Some(current) = focus.id {
+            let current = if current == ENVIRONMENTS {
+                PROJECTS
+            } else {
+                current
+            };
             if let Some(idx) = FOCUS_RING.iter().position(|&id| id == current) {
                 let next = (idx + 1) % FOCUS_RING.len();
                 focus.id = Some(FOCUS_RING[next]);
