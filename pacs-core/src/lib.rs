@@ -237,7 +237,6 @@ impl Pacs {
 
     /// Sets the active project by name.
     pub fn set_active_project(&self, name: ProjectName) -> Result<(), PacsError> {
-        // Verify the project exists
         self.get_project(name)?;
         let mut config = self.load_config()?;
         config.active_project = Some(name.to_string());
@@ -259,6 +258,19 @@ impl Pacs {
         let name = config.active_project.ok_or(PacsError::NoActiveProject)?;
         self.get_project(&name)?;
         Ok(name)
+    }
+
+    /// Returns a reference to the active project.
+    pub fn get_active_project(&self) -> Result<&Project, PacsError> {
+        let config = self.load_config()?;
+        let name = config.active_project.ok_or(PacsError::NoActiveProject)?;
+        self.get_project(&name)
+    }
+
+    /// Returns a mutable reference to the active project.
+    pub fn get_active_project_mut(&mut self) -> Result<&mut Project, PacsError> {
+        let name = self.get_active_project_name()?;
+        self.get_project_mut(&name)
     }
 
     /// Creates a new project with the given name and optional path.
@@ -363,21 +375,21 @@ impl Pacs {
         name: &str,
         new_command: String,
     ) -> Result<String, PacsError> {
-        let active = self.get_active_project_name()?;
-        let project = self.get_project_mut(&active)?;
+        let project = self.get_active_project_mut()?;
+        let project_name = project.name.clone();
 
         let cmd = find_command_mut(project, name)?;
 
         let old_command = cmd.command.clone();
         cmd.command = new_command;
 
-        self.save_project_by_name(&active)?;
+        self.save_project_by_name(&project_name)?;
         Ok(old_command)
     }
 
     pub fn rename_command_auto(&mut self, old_name: &str, new_name: &str) -> Result<(), PacsError> {
-        let active = self.get_active_project_name()?;
-        let project = self.get_project_mut(&active)?;
+        let project = self.get_active_project_mut()?;
+        let project_name = project.name.clone();
 
         if project.commands.iter().any(|c| c.name == new_name) {
             return Err(PacsError::CommandExists(new_name.to_string()));
@@ -387,18 +399,15 @@ impl Pacs {
             return Err(PacsError::CommandNotFound(old_name.to_string()));
         }
 
-        let project = self.get_project_mut(&active)?;
-
         let cmd = find_command_mut(project, old_name)?;
         cmd.name = new_name.to_string();
 
-        self.save_project_by_name(&active)?;
+        self.save_project_by_name(&project_name)?;
         Ok(())
     }
 
     pub fn get_command_auto(&self, name: &str) -> Result<&PacsCommand, PacsError> {
-        let active = self.get_active_project_name()?;
-        let project = self.get_project(&active)?;
+        let project = self.get_active_project()?;
 
         if let Some(cmd) = project.commands.iter().find(|c| c.name == name) {
             return Ok(cmd);
@@ -408,8 +417,8 @@ impl Pacs {
     }
 
     pub fn delete_command_auto(&mut self, name: &str) -> Result<(), PacsError> {
-        let active = self.get_active_project_name()?;
-        let project = self.get_project_mut(&active)?;
+        let project = self.get_active_project_mut()?;
+        let project_name = project.name.clone();
 
         let before = project.commands.len();
         project.commands.retain(|c| c.name != name);
@@ -417,7 +426,7 @@ impl Pacs {
             return Err(PacsError::CommandNotFound(name.to_string()));
         }
 
-        self.save_project_by_name(&active)?;
+        self.save_project_by_name(&project_name)?;
         Ok(())
     }
 
@@ -753,9 +762,7 @@ impl Pacs {
 
     #[must_use]
     pub fn suggest_command_names(&self) -> Vec<String> {
-        if let Ok(active) = self.get_active_project_name()
-            && let Ok(project) = self.get_project(&active)
-        {
+        if let Ok(project) = self.get_active_project() {
             project.commands.iter().map(|c| c.name.clone()).collect()
         } else {
             Vec::new()
@@ -774,9 +781,7 @@ impl Pacs {
         let project = if let Some(name) = project_name {
             self.get_project(name).ok()
         } else {
-            self.get_active_project_name()
-                .ok()
-                .and_then(|active| self.get_project(&active).ok())
+            self.get_active_project().ok()
         };
 
         let Some(project) = project else {
@@ -799,10 +804,8 @@ impl Pacs {
     pub fn suggest_environments(&self, project_name: Option<ProjectName>) -> Vec<String> {
         let project = if let Some(name) = project_name {
             self.get_project(name).ok()
-        } else if let Ok(active) = self.get_active_project_name() {
-            self.get_project(&active).ok()
         } else {
-            None
+            self.get_active_project().ok()
         };
 
         let Some(project) = project else {
