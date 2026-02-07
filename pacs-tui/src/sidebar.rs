@@ -1,4 +1,4 @@
-use crate::{app::PROJECTS, client::PacsClient, theme::Theme};
+use crate::{client::PacsClient, theme::Theme};
 use ratatui::{
     Frame,
     crossterm::event::KeyCode,
@@ -6,20 +6,29 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Borders, List, ListState, Paragraph, StatefulWidget},
 };
-use tui_world::{Focus, keys};
+use tui_world::{Focus, Pointer, keys};
 use tui_world::{Keybindings, WidgetId, World};
+
+pub const PROJECTS: WidgetId = WidgetId("Projects");
 
 pub struct Sidebar;
 
 impl Sidebar {
     pub fn render(world: &mut World, frame: &mut Frame, area: ratatui::prelude::Rect) {
-        let is_focused = world.get::<Focus>().is_focused(PROJECTS);
+        let is_focused = world.get::<Focus>().id == Some(PROJECTS);
         let theme = world.get::<Theme>();
 
         let block = theme.block_for_focus(is_focused);
         let inner_area = block.inner(area);
 
         frame.render_widget(block, area);
+
+        world.get_mut::<Pointer>().set(PROJECTS, area);
+        world
+            .get_mut::<Pointer>()
+            .on_click(PROJECTS, |world, _x, _y| {
+                world.get_mut::<Focus>().set(PROJECTS);
+            });
 
         Projects::render(world, frame, inner_area);
     }

@@ -3,7 +3,7 @@ use crate::{
     commands::{CONTENT, MainPanel},
     components::selectable_text::Selections,
     help,
-    sidebar::{Projects, ProjectsState, Sidebar},
+    sidebar::{PROJECTS, Projects, ProjectsState, Sidebar},
     util::kc,
 };
 use anyhow::Result;
@@ -19,8 +19,9 @@ use tui_world::{Focus, KeyBinding, Keybindings, Pointer, WidgetId, World};
 use crate::theme::Theme;
 
 pub const GLOBAL: WidgetId = WidgetId("Global");
-pub const PROJECTS: WidgetId = WidgetId("Projects");
-pub const FOCUS_RING: [WidgetId; 2] = [PROJECTS, CONTENT];
+
+/// Focus ring order for Tab navigation
+const FOCUS_RING: [WidgetId; 2] = [PROJECTS, CONTENT];
 
 #[derive(Default)]
 pub struct AppState {
