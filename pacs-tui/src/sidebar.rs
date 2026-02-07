@@ -78,20 +78,21 @@ pub struct EnvironmentsState {
 
 impl EnvironmentsState {
     pub fn new(client: &PacsClient) -> Self {
-        let mut state = ListState::default();
-
+        let mut s = Self::default();
         let environments = client.list_environments();
         let active = client.active_environment();
+        s.select_active(&environments, active.as_deref());
+        s
+    }
 
+    pub fn select_active(&mut self, environments: &[String], active: Option<&str>) {
         let index = active
-            .and_then(|name| environments.iter().position(|e| e == &name))
+            .and_then(|name| environments.iter().position(|e| e == name))
             .unwrap_or(0);
 
         if !environments.is_empty() {
-            state.select(Some(index));
+            self.state.select(Some(index));
         }
-
-        Self { state }
     }
 
     fn next(&mut self) {
@@ -110,6 +111,12 @@ impl Projects {
         let kb = world.get_mut::<Keybindings>();
 
         kb.bind(PROJECTS, 'e', "Environments", |world| {
+            let client = world.get::<PacsClient>();
+            let environments = client.list_environments();
+            let active = client.active_environment();
+            world
+                .get_mut::<EnvironmentsState>()
+                .select_active(&environments, active.as_deref());
             world.get_mut::<Focus>().set(ENVIRONMENTS);
         });
 
@@ -119,6 +126,22 @@ impl Projects {
 
         kb.bind_many(PROJECTS, keys![KeyCode::Up, 'k'], "Up", |world| {
             world.get_mut::<ProjectsState>().previous();
+        });
+
+        kb.bind(PROJECTS, KeyCode::Enter, "Activate", |world| {
+            let projects = world.get::<PacsClient>().list_projects();
+            let selected = world.get::<ProjectsState>().state.selected();
+            if let Some(idx) = selected {
+                if let Some(name) = projects.get(idx) {
+                    let _ = world.get_mut::<PacsClient>().set_active_project(name);
+                    let client = world.get::<PacsClient>();
+                    let environments = client.list_environments();
+                    let active = client.active_environment();
+                    world
+                        .get_mut::<EnvironmentsState>()
+                        .select_active(&environments, active.as_deref());
+                }
+            }
         });
     }
 
@@ -142,8 +165,23 @@ impl Projects {
         frame.render_widget(project_title, project_title_area);
 
         let projects = client.list_projects();
+        let active_project = client.active_project();
 
-        let mut list = List::new(projects)
+        let items: Vec<Line> = projects
+            .iter()
+            .map(|name| {
+                if active_project.as_ref() == Some(name) {
+                    Line::from(vec![
+                        Span::raw(name.clone()),
+                        Span::styled(" *", theme.text_accent),
+                    ])
+                } else {
+                    Line::raw(name.clone())
+                }
+            })
+            .collect();
+
+        let mut list = List::new(items)
             .highlight_symbol(" > ")
             .highlight_spacing(HighlightSpacing::Always);
 
@@ -173,6 +211,16 @@ impl Environments {
         kb.bind_many(ENVIRONMENTS, keys![KeyCode::Up, 'k'], "Up", |world| {
             world.get_mut::<EnvironmentsState>().previous();
         });
+
+        kb.bind(ENVIRONMENTS, KeyCode::Enter, "Activate", |world| {
+            let environments = world.get::<PacsClient>().list_environments();
+            let selected = world.get::<EnvironmentsState>().state.selected();
+            if let Some(idx) = selected {
+                if let Some(name) = environments.get(idx) {
+                    let _ = world.get_mut::<PacsClient>().set_active_environment(name);
+                }
+            }
+        });
     }
 
     pub fn render(world: &mut World, frame: &mut Frame, area: ratatui::prelude::Rect) {
@@ -195,8 +243,23 @@ impl Environments {
         frame.render_widget(env_title, env_title_area);
 
         let environments = client.list_environments();
+        let active_env = client.active_environment();
 
-        let mut list = List::new(environments)
+        let items: Vec<Line> = environments
+            .iter()
+            .map(|name| {
+                if active_env.as_ref() == Some(name) {
+                    Line::from(vec![
+                        Span::raw(name.clone()),
+                        Span::styled(" *", theme.text_accent),
+                    ])
+                } else {
+                    Line::raw(name.clone())
+                }
+            })
+            .collect();
+
+        let mut list = List::new(items)
             .highlight_symbol(" > ")
             .highlight_spacing(HighlightSpacing::Always);
 

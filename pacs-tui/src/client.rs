@@ -31,4 +31,15 @@ impl PacsClient {
     pub fn active_environment(&self) -> Option<String> {
         self.pacs.get_active_environment(None).ok().flatten()
     }
+
+    pub fn set_active_project(&mut self, name: &str) -> Result<()> {
+        self.pacs.set_active_project(name)?;
+        Ok(())
+    }
+
+    pub fn set_active_environment(&mut self, name: &str) -> Result<()> {
+        let project = self.pacs.get_active_project_name()?;
+        self.pacs.set_active_environment(&project, name)?;
+        Ok(())
+    }
 }
