@@ -1,6 +1,6 @@
 use crate::{
     client::PacsClient,
-    commands::{CONTENT, CommandsPanel},
+    commands::{CONTENT, Commands, CommandsPanel, CommandsState},
     components::selectable_text::Selections,
     help,
     sidebar::{
@@ -39,11 +39,13 @@ pub fn setup_world(world: &mut World) -> Result<()> {
     let client = PacsClient::new()?;
     world.insert(ProjectsState::new(&client));
     world.insert(EnvironmentsState::new(&client));
+    world.insert(CommandsState::new());
     world.insert(client);
 
     global_keybindings(world);
     Projects::register_keybindings(world);
     Environments::register_keybindings(world);
+    Commands::register_keybindings(world);
 
     Ok(())
 }

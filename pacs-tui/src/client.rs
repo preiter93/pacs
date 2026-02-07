@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use anyhow::Context;
 use anyhow::Result;
-use pacs_core::Pacs;
+use pacs_core::{Pacs, PacsCommand};
 
 pub struct PacsClient {
     pacs: Pacs,
@@ -58,5 +58,9 @@ impl PacsClient {
             .find(|e| &e.name == active_env)
             .map(|e| e.values.clone())
             .unwrap_or_default()
+    }
+
+    pub fn list_commands(&self) -> Vec<PacsCommand> {
+        self.pacs.list(None, None).unwrap_or_default()
     }
 }
