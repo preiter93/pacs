@@ -1,5 +1,3 @@
-use std::env;
-
 use crate::{client::PacsClient, commands::CommandsState, theme::Theme};
 use ratatui::{
     Frame,
@@ -110,7 +108,7 @@ impl Projects {
     pub fn setup_pointer(world: &mut World) {
         world
             .get_mut::<Pointer>()
-            .on_click(PROJECTS, |world, area, x, y| {
+            .on_click(PROJECTS, |world, area, _x, y| {
                 if !world.get::<Focus>().is_focused(PROJECTS) {
                     world.get_mut::<Focus>().set(PROJECTS);
                     return;
@@ -239,7 +237,7 @@ impl Environments {
     pub fn setup_pointer(world: &mut World) {
         world
             .get_mut::<Pointer>()
-            .on_click(ENVIRONMENTS, |world, area, x, y| {
+            .on_click(ENVIRONMENTS, |world, area, _x, y| {
                 if !world.get::<Focus>().is_focused(ENVIRONMENTS) {
                     world.get_mut::<Focus>().set(ENVIRONMENTS);
                     return;
