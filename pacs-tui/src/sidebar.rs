@@ -1,6 +1,6 @@
 use std::env;
 
-use crate::{client::PacsClient, theme::Theme};
+use crate::{client::PacsClient, commands::CommandsState, theme::Theme};
 use ratatui::{
     Frame,
     crossterm::event::KeyCode,
@@ -84,6 +84,7 @@ impl Projects {
                 world
                     .get_mut::<EnvironmentsState>()
                     .select_active(&environments, active.as_deref());
+                world.get_mut::<CommandsState>().state.select(Some(0));
             }
         }
     }
