@@ -1,9 +1,9 @@
 [workspace]
 resolver = "3"
-members = ["pacs", "pacs-cli", "pacs-core"]
+members = ["pacs", "pacs-cli", "pacs-core", "pacs-tui"]
 
 [workspace.package]
-version = "0.1.1"
+version = "0.1.2"
 repository = "https://github.com/preiter93/pacs"
 edition = "2024"
 authors = ["preiter <phil.reiter93@gmail.com>"]
@@ -12,8 +12,9 @@ description = "Project Aware Command Storage - A CLI for managing and running sa
 readme = "README.md"
 
 [workspace.dependencies]
-pacs-cli = { path = "pacs-cli", version = "0.1.1" }
-pacs-core = { path = "pacs-core", version = "0.1.1" }
+pacs-cli = { path = "pacs-cli", version = "0.1.2" }
+pacs-core = { path = "pacs-core", version = "0.1.2" }
+pacs-tui = { path = "pacs-tui", version = "0.1.2" }
 
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }

@@ -1,20 +1,17 @@
 [package]
-name = "pacs"
+name = "pacs-tui"
 version.workspace = true
-edition.workspace = true
 repository.workspace = true
+edition.workspace = true
 authors.workspace = true
 license.workspace = true
 description.workspace = true
 readme.workspace = true
 
-[[bin]]
-name = "pacs"
-path = "src/main.rs"
-
 [dependencies]
 anyhow = { workspace = true }
-clap = { workspace = true }
-clap_complete = { workspace = true }
-pacs-cli = { workspace = true }
-pacs-tui = { workspace = true }
+cli-clipboard = "0.4"
+pacs-core = { workspace = true }
+ratatui = "0.30.0"
+tui-world = "0.1"
+tui-theme-builder = "0.2"
