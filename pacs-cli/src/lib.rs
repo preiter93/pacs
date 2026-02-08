@@ -29,8 +29,12 @@ const RESET: &str = "\x1b[0m";
 #[command(name = "pacs")]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
+    /// Launch the terminal user interface
+    #[arg(long)]
+    pub ui: bool,
+
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -342,9 +346,20 @@ fn complete_environments() -> Vec<CompletionCandidate> {
 }
 
 pub fn run(cli: Cli) -> Result<()> {
+    if cli.ui {
+        return Ok(());
+    }
+
+    let Some(command) = cli.command else {
+        use clap::CommandFactory;
+        Cli::command().print_help()?;
+        println!();
+        return Ok(());
+    };
+
     let mut pacs = Pacs::init_home().context("Failed to initialize pacs")?;
 
-    match cli.command {
+    match command {
         Commands::Init => {
             println!("Pacs initialized at ~/.pacs/");
 

@@ -4,5 +4,12 @@ use pacs_cli::Cli;
 
 fn main() -> anyhow::Result<()> {
     CompleteEnv::with_factory(Cli::command).complete();
-    pacs_cli::run(Cli::parse())
+
+    let cli = Cli::parse();
+
+    if cli.ui {
+        return pacs_tui::run();
+    }
+
+    pacs_cli::run(cli)
 }

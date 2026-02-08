@@ -1312,6 +1312,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "pacs-cli",
+ "pacs-tui",
 ]
 
 [[package]]
