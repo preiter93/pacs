@@ -9,6 +9,7 @@ use ratatui::{
         Table,
     },
 };
+use std::collections::BTreeMap;
 use tui_world::{Focus, Keybindings, Pointer, WidgetId, World, keys};
 
 use crate::{client::PacsClient, highlight::highlight_shell, theme::Theme};
@@ -47,7 +48,9 @@ impl CommandsPanel {
 #[derive(Default)]
 pub struct CommandsState {
     pub state: ListState,
-    pub num_commands: usize,
+    pub num_rows: usize,
+    /// Maps row index to command index (None for header rows)
+    pub row_to_command: Vec<Option<usize>>,
 }
 
 #[derive(Default)]
@@ -73,16 +76,37 @@ impl CommandsState {
         state.select(Some(0));
         Self {
             state,
-            num_commands: 0,
+            num_rows: 0,
+            row_to_command: Vec::new(),
+        }
+    }
+
+    pub fn ensure_valid_selection(&mut self) {
+        if let Some(row) = self.state.selected() {
+            if self.row_to_command.get(row).copied().flatten().is_none() {
+                self.next();
+            }
         }
     }
 
     fn next(&mut self) {
-        self.state.select_next();
+        let current = self.state.selected().unwrap_or(0);
+        for i in (current + 1)..self.row_to_command.len() {
+            if self.row_to_command.get(i).copied().flatten().is_some() {
+                self.state.select(Some(i));
+                return;
+            }
+        }
     }
 
     fn previous(&mut self) {
-        self.state.select_previous();
+        let current = self.state.selected().unwrap_or(0);
+        for i in (0..current).rev() {
+            if self.row_to_command.get(i).copied().flatten().is_some() {
+                self.state.select(Some(i));
+                return;
+            }
+        }
     }
 }
 
@@ -102,10 +126,13 @@ impl Commands {
 
         kb.bind(COMMANDS_LIST, 'c', "Copy", |world| {
             let commands = world.get::<PacsClient>().list_commands();
-            let selected = world.get::<CommandsState>().state.selected();
-            if let Some(idx) = selected {
-                if let Some(cmd) = commands.get(idx) {
-                    let _ = world.get_mut::<PacsClient>().copy_command(&cmd.name);
+            let state = world.get::<CommandsState>();
+            let selected_row = state.state.selected();
+            if let Some(row) = selected_row {
+                if let Some(Some(cmd_idx)) = state.row_to_command.get(row) {
+                    if let Some(cmd) = commands.get(*cmd_idx) {
+                        let _ = world.get_mut::<PacsClient>().copy_command(&cmd.name);
+                    }
                 }
             }
         });
@@ -123,7 +150,12 @@ impl Commands {
                 let row = (y - area.y) as usize;
                 let state = world.get_mut::<CommandsState>();
 
-                if row >= state.num_commands {
+                if row >= state.num_rows {
+                    return;
+                }
+
+                // Skip if clicking on a header row
+                if state.row_to_command.get(row).copied().flatten().is_none() {
                     return;
                 }
 
@@ -168,24 +200,69 @@ impl Commands {
         frame.render_widget(title, title_area);
 
         let commands = client.list_commands();
-        let num_commands = commands.len();
 
-        let items: Vec<Line> = commands
-            .iter()
-            .map(|cmd| Line::raw(cmd.name.clone()))
-            .collect();
+        let mut grouped: BTreeMap<&str, Vec<(usize, &pacs_core::PacsCommand)>> = BTreeMap::new();
+        let mut untagged: Vec<(usize, &pacs_core::PacsCommand)> = Vec::new();
+        for (idx, cmd) in commands.iter().enumerate() {
+            if cmd.tag.is_empty() {
+                untagged.push((idx, cmd));
+            } else {
+                grouped.entry(&cmd.tag).or_default().push((idx, cmd));
+            }
+        }
 
-        let mut list = List::new(items)
-            .highlight_symbol(" > ")
-            .highlight_spacing(HighlightSpacing::Always);
+        let mut row_to_command: Vec<Option<usize>> = Vec::new();
+        let mut rows: Vec<(bool, String, usize)> = Vec::new();
 
-        if is_focused {
-            list = list.highlight_style(theme.selected);
+        for (cmd_idx, cmd) in &untagged {
+            rows.push((false, cmd.name.clone(), *cmd_idx));
+            row_to_command.push(Some(*cmd_idx));
+        }
+
+        for (tag, cmds) in &grouped {
+            rows.push((true, format!("[{}]", tag), 0));
+            row_to_command.push(None);
+
+            for (cmd_idx, cmd) in cmds {
+                rows.push((false, cmd.name.clone(), *cmd_idx));
+                row_to_command.push(Some(*cmd_idx));
+            }
+        }
+
+        let num_rows = rows.len();
+        let selected = world.get::<CommandsState>().state.selected();
+
+        let buf = frame.buffer_mut();
+        for (i, (is_tag, text, _)) in rows.iter().enumerate() {
+            if i >= commands_area.height as usize {
+                break;
+            }
+            let y = commands_area.y + i as u16;
+            let is_selected = selected == Some(i);
+
+            if *is_tag {
+                let span = Span::styled(text.as_str(), theme.text_accent);
+                buf.set_span(commands_area.x, y, &span, commands_area.width);
+            } else {
+                let (prefix, style) = if is_selected && is_focused {
+                    (" > ", theme.selected)
+                } else if is_selected {
+                    (" > ", theme.text)
+                } else {
+                    ("   ", theme.text)
+                };
+                let line = Line::from(vec![
+                    Span::styled(prefix, style),
+                    Span::styled(text.as_str(), style),
+                ]);
+                buf.set_line(commands_area.x, y, &line, commands_area.width);
+            }
         }
 
         let state = world.get_mut::<CommandsState>();
-        state.num_commands = num_commands;
-        list.render(commands_area, frame.buffer_mut(), &mut state.state);
+        state.num_rows = num_rows;
+        state.row_to_command = row_to_command;
+        state.ensure_valid_selection();
 
         world.get_mut::<Pointer>().set(COMMANDS_LIST, commands_area);
     }
@@ -208,7 +285,9 @@ impl CommandDetail {
         let [content_area, button_area] =
             Layout::vertical([Constraint::Min(0), Constraint::Length(3)]).areas(inner);
 
-        let Some(cmd) = selected.and_then(|i| client.list_commands().get(i).cloned()) else {
+        let row_to_command = &world.get::<CommandsState>().row_to_command;
+        let cmd_idx = selected.and_then(|row| row_to_command.get(row).copied().flatten());
+        let Some(cmd) = cmd_idx.and_then(|i| client.list_commands().get(i).cloned()) else {
             return;
         };
 
