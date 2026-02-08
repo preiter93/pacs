@@ -23,7 +23,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  CRATES: "pacs-core pacs-cli pacs"
+  CRATES: "pacs-core pacs-cli pacs-tui pacs"
   BINARY_NAME: pacs
 
 jobs:
