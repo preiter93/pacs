@@ -10,6 +10,7 @@ readme.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
+cli-clipboard = "0.4"
 pacs-core = { workspace = true }
 ratatui = "0.30.0"
 tui-world = { path="../../tui-world", version = "0.1.0" }

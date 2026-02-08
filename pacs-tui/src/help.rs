@@ -30,7 +30,7 @@ pub fn open(world: &mut World) {
     world.get_mut::<Pointer>().set(BACKDROP, area);
     world
         .get_mut::<Pointer>()
-        .on_click(BACKDROP, move |world, x, y| {
+        .on_click(BACKDROP, move |world, _, x, y| {
             if !dialog_area.contains((x, y).into()) {
                 close(world);
             }

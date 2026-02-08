@@ -37,11 +37,6 @@ impl CommandsPanel {
         BottomPanel::render(world, frame, bottom_area);
 
         world.get_mut::<Pointer>().set(CONTENT, area);
-        world
-            .get_mut::<Pointer>()
-            .on_click(CONTENT, |world, _x, _y| {
-                world.get_mut::<Focus>().set(CONTENT);
-            });
     }
 }
 
@@ -69,7 +64,7 @@ impl CommandsState {
 pub struct Commands;
 
 impl Commands {
-    pub fn register_keybindings(world: &mut World) {
+    pub fn setup_keybindings(world: &mut World) {
         let kb = world.get_mut::<Keybindings>();
 
         kb.bind_many(CONTENT, keys![KeyCode::Down, 'j'], "Down", |world| {
@@ -79,6 +74,24 @@ impl Commands {
         kb.bind_many(CONTENT, keys![KeyCode::Up, 'k'], "Up", |world| {
             world.get_mut::<CommandsState>().previous();
         });
+
+        kb.bind(CONTENT, 'c', "Copy", |world| {
+            let commands = world.get::<PacsClient>().list_commands();
+            let selected = world.get::<CommandsState>().state.selected();
+            if let Some(idx) = selected {
+                if let Some(cmd) = commands.get(idx) {
+                    let _ = world.get_mut::<PacsClient>().copy_command(&cmd.name);
+                }
+            }
+        });
+    }
+
+    pub fn setup_pointer(world: &mut World) {
+        world
+            .get_mut::<Pointer>()
+            .on_click(CONTENT, |world, _, _x, _y| {
+                world.get_mut::<Focus>().set(CONTENT);
+            });
     }
 
     pub fn render(world: &mut World, frame: &mut Frame, area: Rect) {

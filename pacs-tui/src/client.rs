@@ -63,4 +63,12 @@ impl PacsClient {
     pub fn list_commands(&self) -> Vec<PacsCommand> {
         self.pacs.list(None, None).unwrap_or_default()
     }
+
+    pub fn copy_command(&self, name: &str) -> Result<String> {
+        let cmd = self.pacs.copy(name, None, None)?;
+        let command = cmd.command.trim().to_string();
+        cli_clipboard::set_contents(command.clone())
+            .map_err(|e| anyhow::anyhow!("Failed to copy to clipboard: {e}"))?;
+        Ok(command)
+    }
 }
