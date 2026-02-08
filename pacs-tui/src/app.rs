@@ -1,6 +1,6 @@
 use crate::{
     client::PacsClient,
-    commands::{COMMANDS_LIST, Commands, CommandsPanel, CommandsState},
+    commands::{COMMANDS_LIST, Commands, CommandsPanel, CommandsState, CopyButtonState},
     help,
     sidebar::{
         ENVIRONMENTS, Environments, EnvironmentsState, PROJECTS, Projects, ProjectsState, Sidebar,
@@ -39,6 +39,7 @@ pub fn setup_world(world: &mut World) -> Result<()> {
     world.insert(ProjectsState::new(&client));
     world.insert(EnvironmentsState::new(&client));
     world.insert(CommandsState::new());
+    world.insert(CopyButtonState::default());
     world.insert(client);
 
     global_keybindings(world);

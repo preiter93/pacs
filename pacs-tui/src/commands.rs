@@ -4,7 +4,10 @@ use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
     text::{Line, Span, Text},
-    widgets::{Borders, Cell, HighlightSpacing, List, Paragraph, Row, StatefulWidget, Table},
+    widgets::{
+        Block, BorderType, Borders, Cell, HighlightSpacing, List, Paragraph, Row, StatefulWidget,
+        Table,
+    },
 };
 use tui_world::{Focus, Keybindings, Pointer, WidgetId, World, keys};
 
@@ -12,6 +15,7 @@ use crate::{client::PacsClient, highlight::highlight_shell, theme::Theme};
 
 pub const COMMANDS_LIST: WidgetId = WidgetId("Commands");
 pub const COMMANDS_DETAIL: WidgetId = WidgetId("CommandDetail");
+pub const COPY_BUTTON: WidgetId = WidgetId("CopyButton");
 
 pub struct CommandsPanel;
 
@@ -44,6 +48,23 @@ impl CommandsPanel {
 pub struct CommandsState {
     pub state: ListState,
     pub num_commands: usize,
+}
+
+#[derive(Default)]
+pub struct CopyButtonState {
+    pub clicked_at: Option<std::time::Instant>,
+}
+
+impl CopyButtonState {
+    pub fn click(&mut self) {
+        self.clicked_at = Some(std::time::Instant::now());
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.clicked_at
+            .map(|t| t.elapsed().as_millis() < 300)
+            .unwrap_or(false)
+    }
 }
 
 impl CommandsState {
@@ -114,6 +135,19 @@ impl Commands {
             .on_click(COMMANDS_DETAIL, |world, _, _x, _y| {
                 world.get_mut::<Focus>().set(COMMANDS_LIST);
             });
+
+        world
+            .get_mut::<Pointer>()
+            .on_click(COPY_BUTTON, |world, _, _x, _y| {
+                let commands = world.get::<PacsClient>().list_commands();
+                let selected = world.get::<CommandsState>().state.selected();
+                if let Some(idx) = selected {
+                    if let Some(cmd) = commands.get(idx) {
+                        let _ = world.get_mut::<PacsClient>().copy_command(&cmd.name);
+                        world.get_mut::<CopyButtonState>().click();
+                    }
+                }
+            });
     }
 
     pub fn render(world: &mut World, frame: &mut Frame, area: Rect) {
@@ -164,9 +198,15 @@ impl CommandDetail {
         let theme = world.get::<Theme>();
         let client = world.get::<PacsClient>();
         let selected = world.get::<CommandsState>().state.selected();
+        let button_active = world.get::<CopyButtonState>().is_active();
 
         let block = theme.block().borders(Borders::LEFT);
         frame.render_widget(block.clone(), area);
+
+        let inner = block.inner(area);
+
+        let [content_area, button_area] =
+            Layout::vertical([Constraint::Min(0), Constraint::Length(3)]).areas(inner);
 
         let Some(cmd) = selected.and_then(|i| client.list_commands().get(i).cloned()) else {
             return;
@@ -175,9 +215,33 @@ impl CommandDetail {
         let lines = highlight_shell(&cmd.command, theme);
         let content =
             Paragraph::new(Text::from(lines)).wrap(ratatui::widgets::Wrap { trim: false });
-        frame.render_widget(content, block.inner(area));
+        frame.render_widget(content, content_area);
 
-        world.get_mut::<Pointer>().set(COMMANDS_DETAIL, area);
+        // Copy button
+        let (button_text, button_style, show_hint) = if button_active {
+            (" Copied! ", theme.success, false)
+        } else {
+            (" Copy ", theme.text_accent, true)
+        };
+        let button_block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(if button_active {
+                theme.success
+            } else {
+                theme.border
+            })
+            .border_type(BorderType::Rounded);
+        let mut button_spans = vec![Span::styled(button_text, button_style)];
+        if show_hint {
+            button_spans.push(Span::styled("[c]", theme.text_muted));
+        }
+        let button = Paragraph::new(Line::from(button_spans)).block(button_block);
+        frame.render_widget(button, button_area);
+
+        world
+            .get_mut::<Pointer>()
+            .set(COMMANDS_DETAIL, content_area);
+        world.get_mut::<Pointer>().set(COPY_BUTTON, button_area);
     }
 }
 
