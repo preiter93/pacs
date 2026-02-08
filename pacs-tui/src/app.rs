@@ -111,13 +111,19 @@ pub fn render_content(world: &mut World, frame: &mut Frame, area: Rect) {
 fn render_title(world: &mut World, frame: &mut ratatui::Frame, area: Rect) {
     let theme = world.get::<Theme>();
 
-    let title = Paragraph::new(Line::from(vec![
+    let left = Line::from(vec![
         Span::styled(" PACS", theme.text_accent),
         Span::styled(" - ", theme.text_muted),
         Span::styled("Project Aware Command Storage", theme.text_muted),
-    ]));
+    ]);
 
-    frame.render_widget(title, area);
+    let right = Line::from(vec![Span::styled("? help ", theme.text_muted)]);
+
+    let [left_area, right_area] =
+        Layout::horizontal([Constraint::Min(0), Constraint::Length(8)]).areas(area);
+
+    frame.render_widget(Paragraph::new(left), left_area);
+    frame.render_widget(Paragraph::new(right), right_area);
 
     // Render a subtle separator line below
     let separator = Block::default()

@@ -89,13 +89,7 @@ impl Projects {
     pub fn setup_keybindings(world: &mut World) {
         let kb = world.get_mut::<Keybindings>();
 
-        kb.bind(PROJECTS, 'e', "Environments", |world| {
-            let client = world.get::<PacsClient>();
-            let environments = client.list_environments();
-            let active = client.active_environment();
-            world
-                .get_mut::<EnvironmentsState>()
-                .select_active(&environments, active.as_deref());
+        kb.bind(PROJECTS, ' ', "Go to Environments", |world| {
             world.get_mut::<Focus>().set(ENVIRONMENTS);
         });
 
@@ -142,10 +136,7 @@ impl Projects {
 
         let block = theme.block().borders(Borders::BOTTOM);
 
-        let title_spans = vec![
-            Span::from(" Projects").style(theme.text_accent),
-            Span::from(" [p]").style(theme.text_muted),
-        ];
+        let title_spans = vec![Span::from(" Projects").style(theme.text_accent)];
 
         let project_title = Paragraph::new(Line::from(title_spans)).block(block);
 
@@ -232,7 +223,7 @@ impl Environments {
     pub fn setup_keybindings(world: &mut World) {
         let kb = world.get_mut::<Keybindings>();
 
-        kb.bind(ENVIRONMENTS, 'p', "Projects", |world| {
+        kb.bind(ENVIRONMENTS, ' ', "Go to Projects", |world| {
             world.get_mut::<Focus>().set(PROJECTS);
         });
 
@@ -279,10 +270,7 @@ impl Environments {
 
         let block = theme.block().borders(Borders::TOP | Borders::BOTTOM);
 
-        let title_spans = vec![
-            Span::from(" Environments").style(theme.text_accent),
-            Span::from(" [e]").style(theme.text_muted),
-        ];
+        let title_spans = vec![Span::from(" Environments").style(theme.text_accent)];
 
         let env_title = Paragraph::new(Line::from(title_spans)).block(block);
 
