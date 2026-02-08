@@ -1,6 +1,6 @@
 use crate::{
     client::PacsClient,
-    commands::{CONTENT, Commands, CommandsPanel, CommandsState},
+    commands::{COMMANDS_LIST, Commands, CommandsPanel, CommandsState},
     help,
     sidebar::{
         ENVIRONMENTS, Environments, EnvironmentsState, PROJECTS, Projects, ProjectsState, Sidebar,
@@ -22,7 +22,7 @@ use crate::theme::Theme;
 pub const GLOBAL: WidgetId = WidgetId("Global");
 
 /// Focus ring order for Tab navigation
-const FOCUS_RING: [WidgetId; 2] = [PROJECTS, CONTENT];
+const FOCUS_RING: [WidgetId; 2] = [PROJECTS, COMMANDS_LIST];
 
 #[derive(Default)]
 pub struct AppState {

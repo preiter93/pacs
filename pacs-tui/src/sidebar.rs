@@ -1,3 +1,5 @@
+use std::env;
+
 use crate::{client::PacsClient, theme::Theme};
 use ratatui::{
     Frame,
@@ -114,7 +116,6 @@ impl Projects {
                 }
 
                 let row = (y - area.y) as usize;
-                let col = (x - area.x) as usize;
                 let state = world.get_mut::<ProjectsState>();
 
                 if row >= state.num_projects {
@@ -164,6 +165,7 @@ impl Projects {
     }
 }
 
+#[derive(Default)]
 pub struct EnvironmentsState {
     pub state: ListState,
     pub num_environments: usize,
@@ -171,21 +173,14 @@ pub struct EnvironmentsState {
 
 impl EnvironmentsState {
     pub fn new(client: &PacsClient) -> Self {
-        let mut state = ListState::default();
+        let mut s = Self::default();
 
         let environments = client.list_environments();
         let active = client.active_environment();
 
-        let index = active
-            .and_then(|name| environments.iter().position(|p| p == &name))
-            .unwrap_or(0);
+        s.select_active(&environments, active.as_deref());
 
-        state.select(Some(index));
-
-        Self {
-            state,
-            num_environments: environments.len(),
-        }
+        s
     }
 
     pub fn select_active(&mut self, environments: &[String], active: Option<&str>) {
@@ -196,6 +191,8 @@ impl EnvironmentsState {
         if !environments.is_empty() {
             self.state.select(Some(index));
         }
+
+        self.num_environments = environments.len();
     }
 
     fn next(&mut self) {
@@ -248,7 +245,6 @@ impl Environments {
                 }
 
                 let row = (y - area.y) as usize;
-                let col = (x - area.x) as usize;
                 let state = world.get_mut::<EnvironmentsState>();
 
                 if row >= state.num_environments {

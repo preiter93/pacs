@@ -10,13 +10,15 @@ use tui_world::{Focus, Keybindings, Pointer, WidgetId, World, keys};
 
 use crate::{client::PacsClient, highlight::highlight_shell, theme::Theme};
 
-pub const CONTENT: WidgetId = WidgetId("Commands");
+pub const COMMANDS_LIST: WidgetId = WidgetId("Commands");
+pub const COMMANDS_DETAIL: WidgetId = WidgetId("CommandDetail");
 
 pub struct CommandsPanel;
 
 impl CommandsPanel {
     pub fn render(world: &mut World, frame: &mut Frame, area: Rect) {
-        let is_focused = world.get::<Focus>().id == Some(CONTENT);
+        let focus_id = world.get::<Focus>().id;
+        let is_focused = focus_id == Some(COMMANDS_LIST) || focus_id == Some(COMMANDS_DETAIL);
         let theme = world.get::<Theme>();
         let client = world.get::<PacsClient>();
 
@@ -35,21 +37,23 @@ impl CommandsPanel {
         Commands::render(world, frame, commands_area);
         CommandDetail::render(world, frame, detail_area);
         BottomPanel::render(world, frame, bottom_area);
-
-        world.get_mut::<Pointer>().set(CONTENT, area);
     }
 }
 
 #[derive(Default)]
 pub struct CommandsState {
     pub state: ListState,
+    pub num_commands: usize,
 }
 
 impl CommandsState {
     pub fn new() -> Self {
         let mut state = ListState::default();
         state.select(Some(0));
-        Self { state }
+        Self {
+            state,
+            num_commands: 0,
+        }
     }
 
     fn next(&mut self) {
@@ -67,15 +71,15 @@ impl Commands {
     pub fn setup_keybindings(world: &mut World) {
         let kb = world.get_mut::<Keybindings>();
 
-        kb.bind_many(CONTENT, keys![KeyCode::Down, 'j'], "Down", |world| {
+        kb.bind_many(COMMANDS_LIST, keys![KeyCode::Down, 'j'], "Down", |world| {
             world.get_mut::<CommandsState>().next();
         });
 
-        kb.bind_many(CONTENT, keys![KeyCode::Up, 'k'], "Up", |world| {
+        kb.bind_many(COMMANDS_LIST, keys![KeyCode::Up, 'k'], "Up", |world| {
             world.get_mut::<CommandsState>().previous();
         });
 
-        kb.bind(CONTENT, 'c', "Copy", |world| {
+        kb.bind(COMMANDS_LIST, 'c', "Copy", |world| {
             let commands = world.get::<PacsClient>().list_commands();
             let selected = world.get::<CommandsState>().state.selected();
             if let Some(idx) = selected {
@@ -89,13 +93,31 @@ impl Commands {
     pub fn setup_pointer(world: &mut World) {
         world
             .get_mut::<Pointer>()
-            .on_click(CONTENT, |world, _, _x, _y| {
-                world.get_mut::<Focus>().set(CONTENT);
+            .on_click(COMMANDS_LIST, |world, area, _x, y| {
+                if !world.get::<Focus>().is_focused(COMMANDS_LIST) {
+                    world.get_mut::<Focus>().set(COMMANDS_LIST);
+                    return;
+                }
+
+                let row = (y - area.y) as usize;
+                let state = world.get_mut::<CommandsState>();
+
+                if row >= state.num_commands {
+                    return;
+                }
+
+                state.state.select(Some(row));
+            });
+
+        world
+            .get_mut::<Pointer>()
+            .on_click(COMMANDS_DETAIL, |world, _, _x, _y| {
+                world.get_mut::<Focus>().set(COMMANDS_LIST);
             });
     }
 
     pub fn render(world: &mut World, frame: &mut Frame, area: Rect) {
-        let is_focused = world.get::<Focus>().id == Some(CONTENT);
+        let is_focused = world.get::<Focus>().id == Some(COMMANDS_LIST);
         let theme = world.get::<Theme>();
         let client = world.get::<PacsClient>();
 
@@ -112,6 +134,8 @@ impl Commands {
         frame.render_widget(title, title_area);
 
         let commands = client.list_commands();
+        let num_commands = commands.len();
+
         let items: Vec<Line> = commands
             .iter()
             .map(|cmd| Line::raw(cmd.name.clone()))
@@ -125,8 +149,11 @@ impl Commands {
             list = list.highlight_style(theme.selected);
         }
 
-        let state = &mut world.get_mut::<CommandsState>().state;
-        list.render(commands_area, frame.buffer_mut(), state);
+        let state = world.get_mut::<CommandsState>();
+        state.num_commands = num_commands;
+        list.render(commands_area, frame.buffer_mut(), &mut state.state);
+
+        world.get_mut::<Pointer>().set(COMMANDS_LIST, commands_area);
     }
 }
 
@@ -149,6 +176,8 @@ impl CommandDetail {
         let content =
             Paragraph::new(Text::from(lines)).wrap(ratatui::widgets::Wrap { trim: false });
         frame.render_widget(content, block.inner(area));
+
+        world.get_mut::<Pointer>().set(COMMANDS_DETAIL, area);
     }
 }
 
