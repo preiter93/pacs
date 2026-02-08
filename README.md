@@ -26,6 +26,8 @@ pacs rm build                   # delete it
 pacs project add MyProject      # create a project
 pacs project switch MyProject   # set active project
 pacs project active             # show active project
+
+pacs --ui                       # open the terminal user interface
 ```
 
 ## Example Output
