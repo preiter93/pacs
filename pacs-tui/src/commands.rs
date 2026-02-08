@@ -165,7 +165,12 @@ impl BottomPanel {
         let rows: Vec<Row> = client
             .environment_values()
             .iter()
-            .map(|(k, v)| Row::new(vec![Cell::new(k.clone()), Cell::new(v.clone())]))
+            .map(|(k, v)| {
+                Row::new(vec![
+                    Cell::new(k.clone()).style(theme.text_muted),
+                    Cell::new(v.clone()).style(theme.text_accent_alt),
+                ])
+            })
             .collect();
 
         let table = Table::new(
