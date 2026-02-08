@@ -4,6 +4,7 @@ mod client;
 mod commands;
 mod components;
 mod help;
+mod highlight;
 mod sidebar;
 mod theme;
 mod util;

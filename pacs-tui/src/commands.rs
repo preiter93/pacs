@@ -3,12 +3,12 @@ use ratatui::widgets::ListState;
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    text::{Line, Span},
+    text::{Line, Span, Text},
     widgets::{Borders, Cell, HighlightSpacing, List, Paragraph, Row, StatefulWidget, Table},
 };
 use tui_world::{Focus, Keybindings, Pointer, WidgetId, World, keys};
 
-use crate::{client::PacsClient, theme::Theme};
+use crate::{client::PacsClient, highlight::highlight_shell, theme::Theme};
 
 pub const CONTENT: WidgetId = WidgetId("Commands");
 
@@ -145,7 +145,9 @@ impl CommandDetail {
             return;
         };
 
-        let content = Paragraph::new(cmd.command).wrap(ratatui::widgets::Wrap { trim: false });
+        let lines = highlight_shell(&cmd.command, theme);
+        let content =
+            Paragraph::new(Text::from(lines)).wrap(ratatui::widgets::Wrap { trim: false });
         frame.render_widget(content, block.inner(area));
     }
 }
