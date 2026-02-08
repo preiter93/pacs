@@ -9,6 +9,7 @@ pub fn highlight_shell<'a>(input: &'a str, theme: &Theme) -> Vec<Line<'a>> {
         .collect()
 }
 
+#[allow(clippy::too_many_lines)]
 fn highlight_line<'a>(line: &'a str, theme: &Theme) -> Line<'a> {
     let mut spans: Vec<Span<'a>> = Vec::new();
     let chars: Vec<char> = line.chars().collect();
@@ -118,9 +119,8 @@ fn highlight_line<'a>(line: &'a str, theme: &Theme) -> Line<'a> {
                 let s: String = chars[start..i].iter().collect();
                 spans.push(Span::styled(s, theme.sh_flag));
                 continue;
-            } else {
-                i = start; // reset, not a flag
             }
+            i = start; // reset, not a flag
         }
 
         // Skip whitespace

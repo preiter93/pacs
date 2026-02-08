@@ -4,10 +4,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
     text::{Line, Span, Text},
-    widgets::{
-        Block, BorderType, Borders, Cell, HighlightSpacing, List, Paragraph, Row, StatefulWidget,
-        Table,
-    },
+    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table},
 };
 use std::collections::BTreeMap;
 use tui_world::{Focus, Keybindings, Pointer, WidgetId, World, keys};
@@ -25,7 +22,6 @@ impl CommandsPanel {
         let focus_id = world.get::<Focus>().id;
         let is_focused = focus_id == Some(COMMANDS_LIST) || focus_id == Some(COMMANDS_DETAIL);
         let theme = world.get::<Theme>();
-        let client = world.get::<PacsClient>();
 
         let block = theme.block_for_focus(is_focused);
         let inner_area = block.inner(area);
@@ -65,8 +61,7 @@ impl CopyButtonState {
 
     pub fn is_active(&self) -> bool {
         self.clicked_at
-            .map(|t| t.elapsed().as_millis() < 300)
-            .unwrap_or(false)
+            .is_some_and(|t| t.elapsed().as_millis() < 300)
     }
 }
 
@@ -82,10 +77,10 @@ impl CommandsState {
     }
 
     pub fn ensure_valid_selection(&mut self) {
-        if let Some(row) = self.state.selected() {
-            if self.row_to_command.get(row).copied().flatten().is_none() {
-                self.next();
-            }
+        if let Some(row) = self.state.selected()
+            && self.row_to_command.get(row).copied().flatten().is_none()
+        {
+            self.next();
         }
     }
 
@@ -128,12 +123,11 @@ impl Commands {
             let commands = world.get::<PacsClient>().list_commands();
             let state = world.get::<CommandsState>();
             let selected_row = state.state.selected();
-            if let Some(row) = selected_row {
-                if let Some(Some(cmd_idx)) = state.row_to_command.get(row) {
-                    if let Some(cmd) = commands.get(*cmd_idx) {
-                        let _ = world.get_mut::<PacsClient>().copy_command(&cmd.name);
-                    }
-                }
+            if let Some(row) = selected_row
+                && let Some(Some(cmd_idx)) = state.row_to_command.get(row)
+                && let Some(cmd) = commands.get(*cmd_idx)
+            {
+                let _ = world.get_mut::<PacsClient>().copy_command(&cmd.name);
             }
         });
     }
@@ -173,11 +167,11 @@ impl Commands {
             .on_click(COPY_BUTTON, |world, _, _x, _y| {
                 let commands = world.get::<PacsClient>().list_commands();
                 let selected = world.get::<CommandsState>().state.selected();
-                if let Some(idx) = selected {
-                    if let Some(cmd) = commands.get(idx) {
-                        let _ = world.get_mut::<PacsClient>().copy_command(&cmd.name);
-                        world.get_mut::<CopyButtonState>().click();
-                    }
+                if let Some(idx) = selected
+                    && let Some(cmd) = commands.get(idx)
+                {
+                    let _ = world.get_mut::<PacsClient>().copy_command(&cmd.name);
+                    world.get_mut::<CopyButtonState>().click();
                 }
             });
     }
@@ -220,7 +214,7 @@ impl Commands {
         }
 
         for (tag, cmds) in &grouped {
-            rows.push((true, format!("[{}]", tag), 0));
+            rows.push((true, format!("[{tag}]"), 0));
             row_to_command.push(None);
 
             for (cmd_idx, cmd) in cmds {
@@ -237,6 +231,7 @@ impl Commands {
             if i >= commands_area.height as usize {
                 break;
             }
+            #[allow(clippy::cast_possible_truncation)]
             let y = commands_area.y + i as u16;
             let is_selected = selected == Some(i);
 

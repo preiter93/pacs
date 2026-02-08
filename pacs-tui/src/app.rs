@@ -5,7 +5,6 @@ use crate::{
     sidebar::{
         ENVIRONMENTS, Environments, EnvironmentsState, PROJECTS, Projects, ProjectsState, Sidebar,
     },
-    util::kc,
 };
 use anyhow::Result;
 use ratatui::{
@@ -15,7 +14,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
 };
-use tui_world::{Focus, KeyBinding, Keybindings, Pointer, WidgetId, World};
+use tui_world::{Focus, KeyBinding, Keybindings, WidgetId, World};
 
 use crate::theme::Theme;
 

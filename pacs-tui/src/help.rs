@@ -56,7 +56,7 @@ pub fn render(world: &World, frame: &mut Frame, area: Rect) {
     let inner = block.inner(dialog_area);
     frame.render_widget(block, dialog_area);
 
-    let active = get_active_ids(&world);
+    let active = get_active_ids(world);
 
     let keybindings = world.get::<Keybindings>();
     let display = keybindings.display_for(&active);
@@ -90,7 +90,7 @@ pub fn render(world: &World, frame: &mut Frame, area: Rect) {
                     .join("/");
 
                 lines.push(Line::from(vec![
-                    Span::styled(format!("{:>12}", keys), theme.keybinding_key),
+                    Span::styled(format!("{keys:>12}"), theme.keybinding_key),
                     Span::raw("  "),
                     Span::styled(*name, theme.text),
                 ]));

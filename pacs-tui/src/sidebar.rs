@@ -74,8 +74,8 @@ impl Projects {
     fn activate_selected(world: &mut World) {
         let projects = world.get::<PacsClient>().list_projects();
         let selected = world.get::<ProjectsState>().state.selected();
-        if let Some(idx) = selected {
-            if let Some(name) = projects.get(idx) {
+        if let Some(idx) = selected
+            && let Some(name) = projects.get(idx) {
                 let _ = world.get_mut::<PacsClient>().set_active_project(name);
                 let environments = world.get::<PacsClient>().list_environments();
                 let active = world.get::<PacsClient>().active_environment();
@@ -84,7 +84,6 @@ impl Projects {
                     .select_active(&environments, active.as_deref());
                 world.get_mut::<CommandsState>().state.select(Some(0));
             }
-        }
     }
 
     pub fn setup_keybindings(world: &mut World) {
@@ -209,11 +208,10 @@ impl Environments {
     fn activate_selected(world: &mut World) {
         let environments = world.get::<PacsClient>().list_environments();
         let selected = world.get::<EnvironmentsState>().state.selected();
-        if let Some(idx) = selected {
-            if let Some(name) = environments.get(idx) {
+        if let Some(idx) = selected
+            && let Some(name) = environments.get(idx) {
                 let _ = world.get_mut::<PacsClient>().set_active_environment(name);
             }
-        }
     }
 
     pub fn setup_keybindings(world: &mut World) {
