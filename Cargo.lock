@@ -2172,8 +2172,6 @@ dependencies = [
 [[package]]
 name = "tui-theme-builder"
 version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1c2849d4805edfa24896421af560d5ab3bc757402d558e0140d118860a4f318"
 dependencies = [
  "tui-theme-builder-derive",
  "tui-theme-builder-internal",
@@ -2182,8 +2180,6 @@ dependencies = [
 [[package]]
 name = "tui-theme-builder-derive"
 version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "239989bba31b1fe918da92716f88bb014df66abdb331246262fdc2d5ae03a210"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2196,8 +2192,6 @@ dependencies = [
 [[package]]
 name = "tui-theme-builder-internal"
 version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73d3761c0085bbc7aedd2af8a4f768d0d3319f080e4b52b209e8492f7b27e605"
 dependencies = [
  "csscolorparser 0.7.2",
  "serde",
@@ -2206,8 +2200,6 @@ dependencies = [
 [[package]]
 name = "tui-world"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a8a3568c417f0c841879d35b66c8aaebda5c1ed3403e1937d1494fad02aed5c"
 dependencies = [
  "crossterm 0.29.0",
  "ratatui",
