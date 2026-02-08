@@ -13,5 +13,5 @@ anyhow = { workspace = true }
 cli-clipboard = "0.4"
 pacs-core = { workspace = true }
 ratatui = "0.30.0"
-tui-world = { path="../../tui-world", version = "0.1.0" }
-tui-theme-builder = { path="../../tui-theme-builder/tui-theme-builder", version = "0.2.0" }
+tui-world = "0.1"
+tui-theme-builder = "0.2"

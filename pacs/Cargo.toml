@@ -17,4 +17,4 @@ anyhow = { workspace = true }
 clap = { workspace = true }
 clap_complete = { workspace = true }
 pacs-cli = { workspace = true }
-pacs-tui = { path = "../pacs-tui" }
+pacs-tui = { workspace = true }

@@ -15,6 +15,7 @@ sed -i '' "s/^version = \"[^\"]*\"/version = \"$VERSION\"/" Cargo.toml
 # Update workspace.dependencies versions for internal crates
 sed -i '' "s/\(pacs-core = { path = \"pacs-core\", version = \"\)[^\"]*/\1$VERSION/" Cargo.toml
 sed -i '' "s/\(pacs-cli = { path = \"pacs-cli\", version = \"\)[^\"]*/\1$VERSION/" Cargo.toml
+sed -i '' "s/\(pacs-cli = { path = \"pacs-tui\", version = \"\)[^\"]*/\1$VERSION/" Cargo.toml
 
 echo "✅ Bumped version to $VERSION"
 cargo check --quiet
