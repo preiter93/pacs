@@ -15,7 +15,7 @@ use ratatui::crossterm::{
     event::{self, Event as CEvent},
     execute,
 };
-use tui_world::prelude::*;
+use tui_world::{InputEvent, World};
 
 use crate::{app::setup_world, util::get_active_ids};
 
@@ -38,8 +38,8 @@ pub fn run() -> anyhow::Result<()> {
             let active = get_active_ids(&world);
 
             match event::read()? {
-                CEvent::Key(key) => Event::Key(key).handle(&mut world, &active),
-                CEvent::Mouse(mouse) => Event::Mouse(mouse).handle(&mut world, &active),
+                CEvent::Key(key) => InputEvent::Key(key).handle(&mut world, &active),
+                CEvent::Mouse(mouse) => InputEvent::Mouse(mouse).handle(&mut world, &active),
                 _ => {}
             }
         }

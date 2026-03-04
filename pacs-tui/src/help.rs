@@ -85,7 +85,7 @@ pub fn render(world: &World, frame: &mut Frame, area: Rect) {
             for (name, infos) in commands {
                 let keys = infos
                     .iter()
-                    .map(|i| i.key.to_string())
+                    .flat_map(|i| i.keys.iter().map(|k| k.to_string()))
                     .collect::<Vec<_>>()
                     .join("/");
 
