@@ -255,6 +255,11 @@ pub struct EditArgs {
     /// Name of the command to edit
     #[arg(add = ArgValueCandidates::new(complete_commands))]
     pub name: String,
+
+    /// Set or update the tag for this command.
+    /// Use an empty string to remove the tag: --tag ""
+    #[arg(short, long, add = ArgValueCandidates::new(complete_tags))]
+    pub tag: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -475,7 +480,18 @@ pub fn run(cli: Cli) -> Result<()> {
 
             pacs.update_command_auto(&args.name, new_command)
                 .with_context(|| format!("Failed to update command '{}'", args.name))?;
-            println!("Command '{}' updated.", args.name);
+
+            if let Some(tag) = args.tag {
+                pacs.tag_command_auto(&args.name, tag.clone())
+                    .with_context(|| format!("Failed to update tag for command '{}'", args.name))?;
+                if tag.is_empty() {
+                    println!("Command '{}' updated, tag removed.", args.name);
+                } else {
+                    println!("Command '{}' updated with tag '{}'.", args.name, tag);
+                }
+            } else {
+                println!("Command '{}' updated.", args.name);
+            }
         }
 
         Commands::Rename(args) => {

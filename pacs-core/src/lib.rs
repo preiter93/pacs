@@ -442,6 +442,18 @@ impl Pacs {
         Ok(())
     }
 
+    pub fn tag_command_auto(&mut self, name: &str, tag: String) -> Result<String, PacsError> {
+        let project = self.get_active_project_mut()?;
+        let project_name = project.name.clone();
+
+        let cmd = find_command_mut(project, name)?;
+
+        let old_tag = std::mem::replace(&mut cmd.tag, tag);
+
+        self.save_project_by_name(&project_name)?;
+        Ok(old_tag)
+    }
+
     pub fn list(
         &self,
         project_name: Option<ProjectName>,
