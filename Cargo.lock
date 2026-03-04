@@ -2173,9 +2173,9 @@ checksum = "7694e1cfe791f8d31026952abf09c69ca6f6fa4e1a1229e18988f06a04a12dca"
 
 [[package]]
 name = "toml"
-version = "0.9.12+spec-1.1.0"
+version = "1.0.3+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf92845e79fc2e2def6a5d828f0801e29a2f8acc037becc5ab08595c7d5e9863"
+checksum = "c7614eaf19ad818347db24addfa201729cf2a9b6fdfd9eb0ab870fcacc606c0c"
 dependencies = [
  "indexmap",
  "serde_core",
@@ -2188,9 +2188,9 @@ dependencies = [
 
 [[package]]
 name = "toml_datetime"
-version = "0.7.5+spec-1.1.0"
+version = "1.0.0+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92e1cfed4a3038bc5a127e35a2d360f145e1f4b971b551a2ba5fd7aedf7e1347"
+checksum = "32c2555c699578a4f59f0cc68e5116c8d7cabbd45e1409b989d4be085b53f13e"
 dependencies = [
  "serde_core",
 ]
@@ -2224,6 +2224,8 @@ dependencies = [
 [[package]]
 name = "tui-theme-builder"
 version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1c2849d4805edfa24896421af560d5ab3bc757402d558e0140d118860a4f318"
 dependencies = [
  "tui-theme-builder-derive",
  "tui-theme-builder-internal",
@@ -2232,6 +2234,8 @@ dependencies = [
 [[package]]
 name = "tui-theme-builder-derive"
 version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "239989bba31b1fe918da92716f88bb014df66abdb331246262fdc2d5ae03a210"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2244,6 +2248,8 @@ dependencies = [
 [[package]]
 name = "tui-theme-builder-internal"
 version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73d3761c0085bbc7aedd2af8a4f768d0d3319f080e4b52b209e8492f7b27e605"
 dependencies = [
  "csscolorparser 0.7.2",
  "serde",
@@ -2252,6 +2258,8 @@ dependencies = [
 [[package]]
 name = "tui-world"
 version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e306692011602a7e334aa9e69de54894f80da9a03efac2f9dc30c589d212bbe8"
 dependencies = [
  "crossterm 0.29.0",
  "ratatui",
