@@ -1332,7 +1332,7 @@ dependencies = [
 
 [[package]]
 name = "pacs"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "clap",
@@ -1343,7 +1343,7 @@ dependencies = [
 
 [[package]]
 name = "pacs-cli"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "arboard",
@@ -1356,7 +1356,7 @@ dependencies = [
 
 [[package]]
 name = "pacs-core"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "dirs",
  "fuzzy-matcher",
@@ -1368,7 +1368,7 @@ dependencies = [
 
 [[package]]
 name = "pacs-tui"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "cli-clipboard",
