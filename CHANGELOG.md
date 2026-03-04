@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.3] - 2026-03-04
+
+### 🚀 Features
+
+- *(cli)* Add cli command to change tag
+
+### 🐛 Bug Fixes
+
+- *(ci)* Fail lint on warning
+
 ## [0.1.2] - 2026-02-08
 
 ### 🚀 Features
