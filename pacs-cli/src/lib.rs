@@ -52,6 +52,9 @@ pub enum Commands {
     /// Edit an existing command
     Edit(EditArgs),
 
+    /// Set or update a command's tag
+    Tag(TagArgs),
+
     /// Rename a command
     Rename(RenameArgs),
 
@@ -268,6 +271,17 @@ pub struct RenameArgs {
 }
 
 #[derive(Args, Debug)]
+pub struct TagArgs {
+    /// Name of the command to tag
+    #[arg(add = ArgValueCandidates::new(complete_commands))]
+    pub name: String,
+
+    /// Tag to apply (empty string to remove tag)
+    #[arg(add = ArgValueCandidates::new(complete_tags))]
+    pub tag: String,
+}
+
+#[derive(Args, Debug)]
 pub struct ListArgs {
     /// Command name to show details for
     #[arg(add = ArgValueCandidates::new(complete_commands))]
@@ -476,6 +490,27 @@ pub fn run(cli: Cli) -> Result<()> {
             pacs.update_command_auto(&args.name, new_command)
                 .with_context(|| format!("Failed to update command '{}'", args.name))?;
             println!("Command '{}' updated.", args.name);
+        }
+
+        Commands::Tag(args) => {
+            let old_tag = pacs
+                .tag_command_auto(&args.name, args.tag.clone())
+                .with_context(|| format!("Failed to tag command '{}'", args.name))?;
+
+            if args.tag.is_empty() {
+                if old_tag.is_empty() {
+                    println!("Command '{}' has no tag.", args.name);
+                } else {
+                    println!("Tag '{}' removed from command '{}'.", old_tag, args.name);
+                }
+            } else if old_tag.is_empty() {
+                println!("Command '{}' tagged as '{}'.", args.name, args.tag);
+            } else {
+                println!(
+                    "Command '{}' tag updated from '{}' to '{}'.",
+                    args.name, old_tag, args.tag
+                );
+            }
         }
 
         Commands::Rename(args) => {
