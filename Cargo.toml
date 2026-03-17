@@ -17,8 +17,8 @@ pacs-core = { path = "pacs-core", version = "0.1.3" }
 pacs-tui = { path = "pacs-tui", version = "0.1.2" }
 
 anyhow = "1.0"
-clap = { version = "4.5", features = ["derive"] }
-clap_complete = { version = "4.5", features = ["unstable-dynamic"] }
+clap = { version = "4.6", features = ["derive"] }
+clap_complete = { version = "4.6", features = ["unstable-dynamic"] }
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"
-toml = "0.9"
+toml = "1.0"
